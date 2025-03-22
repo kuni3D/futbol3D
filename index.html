@@ -5,26 +5,30 @@
     <style>
         body {
             margin: 0;
-            font-family: Arial, sans-serif; /* Fuente similar a Arial */
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Evitar barras de desplazamiento */
         }
         canvas {
             display: block;
+            width: 100vw; /* Ocupar todo el ancho */
+            height: 100vh; /* Ocupar toda la altura */
         }
-        /* Contenedor para el menú y login */
         .header {
             position: absolute;
             top: 10px;
-            width: 100%;
+            left: 0; /* Asegurar que empiece desde el borde izquierdo */
+            width: 100%; /* Ocupar todo el ancho disponible */
             display: flex;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 20px; /* Padding interno */
+            box-sizing: border-box; /* Incluir padding en el ancho total */
             color: #808080; /* Gris */
-            font-size: 18px;
+            font-size: clamp(16px, 2vw, 18px); /* Tamaño responsivo entre 16px y 18px */
+            z-index: 1; /* Asegurar que esté sobre el canvas */
         }
     </style>
 </head>
 <body>
-    <!-- Agregar el encabezado -->
     <div class="header">
         <div>Menu</div>
         <div>Log In / Sign Up</div>
@@ -34,113 +38,86 @@
     <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script>
-        // Escena, cámara y renderizador
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; // Habilitar sombras
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Sombras suaves
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // Luces mejoradas (intensidad reducida)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Luz ambiental con intensidad reducida
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Luz direccional con intensidad reducida
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true; // Habilitar sombras
-        directionalLight.shadow.mapSize.width = 4096; // Calidad de las sombras (ancho)
-        directionalLight.shadow.mapSize.height = 4096; // Calidad de las sombras (alto)
-        directionalLight.shadow.camera.left = -10; // Límite izquierdo del área de sombra
-        directionalLight.shadow.camera.right = 10; // Límite derecho del área de sombra
-        directionalLight.shadow.camera.top = 10; // Límite superior del área de sombra
-        directionalLight.shadow.camera.bottom = -10; // Límite inferior del área de sombra
-        directionalLight.shadow.camera.near = 0.5; // Límite cercano del área de sombra
-        directionalLight.shadow.camera.far = 20; // Límite lejano del área de sombra
-        directionalLight.shadow.bias = -0.001; // Ajustar el sesgo de las sombras
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 4096;
+        directionalLight.shadow.mapSize.height = 4096;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 20;
+        directionalLight.shadow.bias = -0.001;
         scene.add(directionalLight);
 
-        // Variables para la pelota
         let ball;
-        let velocity = new THREE.Vector3(0, 0, 0); // Velocidad inicial (solo en X y Z)
-        const speed = 0.3; // Velocidad al disparar
-        const roomSizeX = 1.27; // Tamaño de la habitación en X
-        const roomSizeZ = 2.3; // Tamaño de la habitación en Z
+        let velocity = new THREE.Vector3(0, 0, 0);
+        const speed = 0.3;
+        const roomSizeX = 1.27;
+        const roomSizeZ = 2.3;
 
-        // Cargar el modelo GLTF de la escena (incluye pelota, arco y banderín)
         const loader = new THREE.GLTFLoader();
-        let mixer; // Mezclador de animaciones para el banderín
+        let mixer;
 
-        loader.load('pelotita2.gltf', (gltf) => {
+        loader.load('pelotita2.gltf', (gltf) => { // Cambia a 'pelotita2.glb' si usas GLB
             const model = gltf.scene;
-
-            // Habilitar sombras para el modelo
             model.traverse((child) => {
                 if (child.isMesh) {
-                    child.castShadow = true; // El modelo proyecta sombras
-                    child.receiveShadow = true; // El modelo recibe sombras
+                    child.castShadow = true;
+                    child.receiveShadow = true;
                 }
             });
-
             scene.add(model);
 
-            // Encontrar la pelota en el modelo (ajusta el nombre según cómo la nombraste en Blender)
-            ball = model.getObjectByName('pelota'); // Cambia 'pelota' por el nombre real
-            if (!ball) {
-                console.error('No se encontró la pelota en el modelo');
-                return;
-            }
+            ball = model.getObjectByName('pelota');
+            if (!ball) console.error('No se encontró la pelota en el modelo');
 
-            // Encontrar el banderín en el modelo (ajusta el nombre según cómo la nombraste en Blender)
-            const banderin = model.getObjectByName('banderin'); // Cambia 'banderin' por el nombre real
-            if (!banderin) {
-                console.error('No se encontró el banderín en el modelo');
-                return;
-            }
+            const banderin = model.getObjectByName('banderin');
+            if (!banderin) console.error('No se encontró el banderín en el modelo');
 
-            // Verificar si el banderín tiene morph targets
-            if (banderin.isMesh && banderin.morphTargetInfluences) {
+            if (banderin?.isMesh && banderin.morphTargetInfluences) {
                 console.log("Morph targets del banderín cargados correctamente.");
             } else {
                 console.error("El banderín no tiene morph targets.");
             }
 
-            // Configurar el mezclador de animaciones para el banderín
             mixer = new THREE.AnimationMixer(model);
-
-            // Reproducir la animación de shape keys del banderín
             if (gltf.animations.length > 0) {
-                const clip = gltf.animations.find((clip) => clip.name === 'banderinflameo'); // Cambia 'banderin_animacion' por el nombre de la animación
-                if (clip) {
-                    const action = mixer.clipAction(clip);
-                    action.play();
-                } else {
-                    console.error("No se encontró la animación del banderín.");
-                }
+                const clip = gltf.animations.find((clip) => clip.name === 'banderinflameo');
+                if (clip) mixer.clipAction(clip).play();
+                else console.error("No se encontró la animación del banderín.");
             } else {
                 console.error("No se encontraron animaciones en el modelo.");
             }
 
-            // Posicionar la cámara
-            camera.position.set(0, 5, 10); // Ajustar la posición de la cámara
+            camera.position.set(0, 5, 10);
             camera.lookAt(0, 0, 0);
         }, undefined, (error) => {
             console.error('Error al cargar el modelo:', error);
         });
 
-        // Crear el arco de fútbol
-        const goalWidth = 1.3; // Ancho del arco
-        const goalHeight = 0.7; // Altura del arco
-        const goalDepth = 0.2; // Profundidad del arco
-
+        const goalWidth = 1.3;
+        const goalHeight = 0.7;
+        const goalDepth = 0.2;
         const goalGeometry = new THREE.BoxGeometry(goalWidth, goalHeight, goalDepth);
-        const goalMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }); // Material de prueba
+        const goalMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
         const goal = new THREE.Mesh(goalGeometry, goalMaterial);
-        goal.position.set(0, goalHeight / 2, -2.3); // Posicionar el arco al fondo de la escena
+        goal.position.set(0, goalHeight / 2, -2.3);
         scene.add(goal);
 
-        // Área del arco (volumen de colisión)
         const goalArea = {
             minX: goal.position.x - goalWidth / 2,
             maxX: goal.position.x + goalWidth / 2,
@@ -150,12 +127,9 @@
             maxZ: goal.position.z + goalDepth / 2,
         };
 
-        // Función para verificar si la pelota está dentro del área del arco
         function isBallInGoal() {
             if (!ball) return false;
-
             const ballPosition = ball.position;
-
             return (
                 ballPosition.x >= goalArea.minX &&
                 ballPosition.x <= goalArea.maxX &&
@@ -166,80 +140,50 @@
             );
         }
 
-        // Controles de órbita (clic y arrastre para rotar)
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; // Suavizar el movimiento
-        controls.dampingFactor = 0.05; // Factor de suavizado
-        controls.screenSpacePanning = false; // Evitar desplazamiento en el espacio de la pantalla
-        controls.minDistance = 5; // Distancia mínima de la cámara
-        controls.maxDistance = 20; // Distancia máxima de la cámara
-        controls.maxPolarAngle = Math.PI / 2; // Límite de rotación vertical
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 5;
+        controls.maxDistance = 20;
+        controls.maxPolarAngle = Math.PI / 2;
 
-        // Detectar clics
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-
         window.addEventListener('click', (event) => {
-            // Convertir coordenadas del clic a espacio 3D
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects([ball]);
-
             if (intersects.length > 0) {
-                // Al hacer clic en la pelota, darle velocidad (solo en X y Z)
                 velocity.set(
-                    (Math.random() - 0.5) * speed, // Dirección aleatoria en X
-                    0, // Sin movimiento en Y
-                    (Math.random() - 0.5) * speed  // Dirección aleatoria en Z
+                    (Math.random() - 0.5) * speed,
+                    0,
+                    (Math.random() - 0.5) * speed
                 );
             }
         });
 
-        // Animación y rebote
-        const clock = new THREE.Clock(); // Reloj para el mezclador de animaciones
-
+        const clock = new THREE.Clock();
         function animate() {
             requestAnimationFrame(animate);
-
-            // Actualizar los controles de órbita
             controls.update();
-
-            // Actualizar el mezclador de animaciones del banderín
-            if (mixer) {
-                const delta = clock.getDelta();
-                mixer.update(delta);
-            }
-
+            if (mixer) mixer.update(clock.getDelta());
             if (ball) {
-                // Actualizar posición de la pelota (solo en X y Z)
                 ball.position.x += velocity.x;
                 ball.position.z += velocity.z;
-
-                // Detectar colisiones con las paredes (solo en X y Z)
-                if (ball.position.x > roomSizeX || ball.position.x < -roomSizeX) {
-                    velocity.x = -velocity.x; // Rebote en X
-                }
-                if (ball.position.z > roomSizeZ || ball.position.z < -roomSizeZ) {
-                    velocity.z = -velocity.z; // Rebote en Z
-                }
-
-                // Verificar si la pelota entró en el arco
+                if (ball.position.x > roomSizeX || ball.position.x < -roomSizeX) velocity.x = -velocity.x;
+                if (ball.position.z > roomSizeZ || ball.position.z < -roomSizeZ) velocity.z = -velocity.z;
                 if (isBallInGoal()) {
-                    console.log("¡Gol!"); // Mostrar mensaje en la consola
-                    velocity.set(0, 0, 0); // Detener la pelota
+                    console.log("¡Gol!");
+                    velocity.set(0, 0, 0);
                 }
-
-                // Opcional: reducir velocidad con el tiempo (fricción)
                 velocity.multiplyScalar(0.99);
             }
-
             renderer.render(scene, camera);
         }
         animate();
 
-        // Ajustar el tamaño al redimensionar la ventana
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
