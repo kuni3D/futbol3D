@@ -3,11 +3,33 @@
 <head>
     <title>Pelota y Arco de Fútbol con Banderín Animado</title>
     <style>
-        body { margin: 0; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif; /* Fuente similar a Arial */
+        }
+        canvas {
+            display: block;
+        }
+        /* Contenedor para el menú y login */
+        .header {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: #808080; /* Gris */
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
+    <!-- Agregar el encabezado -->
+    <div class="header">
+        <div>Menu</div>
+        <div>Log In / Sign Up</div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
