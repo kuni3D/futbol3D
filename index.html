@@ -6,25 +6,26 @@
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            overflow: hidden; /* Evitar barras de desplazamiento */
+            overflow: hidden;
         }
         canvas {
             display: block;
-            width: 100vw; /* Ocupar todo el ancho */
-            height: 100vh; /* Ocupar toda la altura */
+            width: 100vw;
+            height: 100vh;
         }
         .header {
             position: absolute;
             top: 10px;
-            left: 0; /* Asegurar que empiece desde el borde izquierdo */
-            width: 100%; /* Ocupar todo el ancho disponible */
+            left: 0;
+            width: 100%;
             display: flex;
             justify-content: space-between;
-            padding: 0 20px; /* Padding interno */
-            box-sizing: border-box; /* Incluir padding en el ancho total */
-            color: #808080; /* Gris */
-            font-size: clamp(16px, 2vw, 18px); /* Tamaño responsivo entre 16px y 18px */
-            z-index: 1; /* Asegurar que esté sobre el canvas */
+            padding: 0 20px;
+            box-sizing: border-box;
+            color: #808080;
+            font-size: clamp(16px, 2vw, 18px);
+            z-index: 1;
+            pointer-events: none; /* Permite que los clics pasen al canvas */
         }
     </style>
 </head>
@@ -150,7 +151,7 @@
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        window.addEventListener('click', (event) => {
+        window.addEventListener('mousedown', (event) => { // Cambiar 'click' por 'mousedown'
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
