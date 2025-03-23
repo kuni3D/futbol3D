@@ -96,22 +96,45 @@
             console.error('Error al cargar el modelo:', error);
         });
 
+        // Definir el arco de fútbol
         const goalWidth = 1.3;
         const goalHeight = 0.7;
         const goalDepth = 0.2;
-        const goalGeometry = new THREE.BoxGeometry(goalWidth, goalHeight, goalDepth);
-        const goalMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
-        const goal = new THREE.Mesh(goalGeometry, goalMaterial);
-        goal.position.set(0, goalHeight / 2, -2.3);
-        scene.add(goal);
+        const postRadius = 0.05; // Radio de los postes
+
+        // Poste izquierdo
+        const leftPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const postMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const leftPost = new THREE.Mesh(leftPostGeometry, postMaterial);
+        leftPost.position.set(-goalWidth / 2, goalHeight / 2, -2.3);
+        scene.add(leftPost);
+
+        // Poste derecho
+        const rightPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const rightPost = new THREE.Mesh(rightPostGeometry, postMaterial);
+        rightPost.position.set(goalWidth / 2, goalHeight / 2, -2.3);
+        scene.add(rightPost);
+
+        // Travesaño
+        const crossbarGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
+        const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
+        crossbar.position.set(0, goalHeight, -2.3);
+        crossbar.rotation.z = Math.PI / 2; // Rotar para que sea horizontal
+        scene.add(crossbar);
+
+        // Bounding boxes para colisiones
+        const ballBox = new THREE.Box3();
+        const leftPostBox = new THREE.Box3().setFromObject(leftPost);
+        const rightPostBox = new THREE.Box3().setFromObject(rightPost);
+        const crossbarBox = new THREE.Box3().setFromObject(crossbar);
 
         const goalArea = {
-            minX: goal.position.x - goalWidth / 2,
-            maxX: goal.position.x + goalWidth / 2,
-            minY: goal.position.y - goalHeight / 2,
-            maxY: goal.position.y + goalHeight / 2,
-            minZ: goal.position.z - goalDepth / 2,
-            maxZ: goal.position.z + goalDepth / 2,
+            minX: -goalWidth / 2,
+            maxX: goalWidth / 2,
+            minY: 0,
+            maxY: goalHeight,
+            minZ: -2.3 - goalDepth / 2,
+            maxZ: -2.3 + goalDepth / 2,
         };
 
         function isBallInGoal() {
@@ -122,6 +145,34 @@
                 ballPosition.y >= goalArea.minY && ballPosition.y <= goalArea.maxY &&
                 ballPosition.z >= goalArea.minZ && ballPosition.z <= goalArea.maxZ
             );
+        }
+
+        function checkCollisions() {
+            if (!ball) return;
+
+            // Actualizar el bounding box de la pelota
+            ballBox.setFromObject(ball);
+
+            // Colisión con poste izquierdo
+            if (ballBox.intersectsBox(leftPostBox)) {
+                velocity.x = -velocity.x; // Rebote en X
+                velocity.z = -velocity.z; // Rebote en Z
+                console.log('Colisión con poste izquierdo');
+            }
+
+            // Colisión con poste derecho
+            if (ballBox.intersectsBox(rightPostBox)) {
+                velocity.x = -velocity.x;
+                velocity.z = -velocity.z;
+                console.log('Colisión con poste derecho');
+            }
+
+            // Colisión con travesaño
+            if (ballBox.intersectsBox(crossbarBox)) {
+                velocity.y = -velocity.y; // Rebote en Y (travesaño está arriba)
+                velocity.z = -velocity.z;
+                console.log('Colisión con travesaño');
+            }
         }
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -159,13 +210,26 @@
             if (ball) {
                 ball.position.x += velocity.x;
                 ball.position.z += velocity.z;
+                ball.position.y += velocity.y; // Permitir movimiento en Y para travesaño
+
+                // Colisiones con paredes
                 if (ball.position.x > roomSizeX || ball.position.x < -roomSizeX) velocity.x = -velocity.x;
                 if (ball.position.z > roomSizeZ || ball.position.z < -roomSizeZ) velocity.z = -velocity.z;
+                if (ball.position.y < 0) { // Suelo
+                    ball.position.y = 0;
+                    velocity.y = 0;
+                }
+
+                // Verificar colisiones con el arco
+                checkCollisions();
+
+                // Verificar gol
                 if (isBallInGoal()) {
                     console.log("¡Gol!");
                     velocity.set(0, 0, 0);
                 }
-                velocity.multiplyScalar(0.99);
+
+                velocity.multiplyScalar(0.99); // Fricción
             }
             renderer.render(scene, camera);
         }
