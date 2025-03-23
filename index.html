@@ -68,7 +68,7 @@
             });
             scene.add(model);
 
-            ball = model.getObjectByName('pelota'); // Cambia 'pelota' por el nombre real si es diferente
+            ball = model.getObjectByName('pelota');
             if (!ball) console.error('No se encontró la pelota en el modelo');
             else console.log('Pelota encontrada:', ball);
 
@@ -135,10 +135,11 @@
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
         window.addEventListener('mousedown', (event) => {
+            event.preventDefault();
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects([ball]);
+            const intersects = raycaster.intersectObject(ball);
             console.log('Intersecciones:', intersects);
             if (intersects.length > 0) {
                 velocity.set(
