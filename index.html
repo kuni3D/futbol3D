@@ -11,11 +11,22 @@
             box-sizing: border-box; color: #808080; font-size: clamp(16px, 2vw, 18px);
             z-index: 1; pointer-events: none;
         }
-        #scoreboard {
+        .scoreboard {
             position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
             color: #ffffff; font-size: 24px; text-align: center;
-            background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px;
+            background: rgba(0, 0, 0, 0.5); padding: 5px 15px; border-radius: 5px;
             z-index: 1;
+        }
+        .buttons {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 1; display: flex; gap: 10px;
+        }
+        button {
+            padding: 5px 10px; font-size: 16px; background: #ffffff;
+            border: none; border-radius: 5px; cursor: pointer;
+        }
+        button:hover {
+            background: #e0e0e0;
         }
     </style>
 </head>
@@ -24,12 +35,54 @@
         <div>Menu</div>
         <div>Log In / Sign Up</div>
     </div>
-    <div id="scoreboard">Equipo 1: 0 - Equipo 2: 0</div>
+    <div id="scoreboard" class="scoreboard">Equipo 1: 0 - Equipo 2: 0</div>
+    <div class="buttons">
+        <button id="resetBall">Reiniciar Pelota</button>
+        <button id="resetGame">Reiniciar Partida</button>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
     <script>
+        // Conexión WebSocket
+        const socket = new WebSocket('ws://localhost:8080');
+        let playerId = null;
+
+        socket.onopen = () => {
+            console.log('Conectado al servidor WebSocket');
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'playerId') {
+                playerId = data.id;
+                console.log('Soy el jugador', playerId);
+            } else if (data.type === 'ballPosition') {
+                if (ball && data.playerId !== playerId) {
+                    ball.position.set(data.x, data.y, data.z);
+                    velocity.set(data.vx, data.vy, data.vz);
+                }
+            } else if (data.type === 'score') {
+                team1Score = data.team1Score;
+                team2Score = data.team2Score;
+                updateScoreboard();
+            } else if (data.type === 'resetBall') {
+                if (ball) {
+                    ball.position.set(0, 0, 0);
+                    velocity.set(0, 0, 0);
+                }
+            } else if (data.type === 'resetGame') {
+                if (ball) {
+                    ball.position.set(0, 0, 0);
+                    velocity.set(0, 0, 0);
+                    team1Score = 0;
+                    team2Score = 0;
+                    updateScoreboard();
+                }
+            }
+        };
+
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -60,8 +113,8 @@
         const roomSizeX = 1.4;
         const roomSizeZ = 2.3;
 
-        let team1Score = 0; // Goles del Equipo 1
-        let team2Score = 0; // Goles del Equipo 2
+        let team1Score = 0;
+        let team2Score = 0;
         const scoreboard = document.getElementById('scoreboard');
 
         function updateScoreboard() {
@@ -119,33 +172,33 @@
         const leftPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const postMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const leftPost = new THREE.Mesh(leftPostGeometry, postMaterial);
-        leftPost.position.set(-goalWidth / 2, goalHeight / 2, -2.3); // Equipo 1
+        leftPost.position.set(-goalWidth / 2, goalHeight / 2, -2.3);
         scene.add(leftPost);
 
         const rightPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const rightPost = new THREE.Mesh(rightPostGeometry, postMaterial);
-        rightPost.position.set(goalWidth / 2, goalHeight / 2, -2.3); // Equipo 1
+        rightPost.position.set(goalWidth / 2, goalHeight / 2, -2.3);
         scene.add(rightPost);
 
         const crossbarGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
         const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
-        crossbar.position.set(0, goalHeight, -2.3); // Equipo 1
+        crossbar.position.set(0, goalHeight, -2.3);
         crossbar.rotation.z = Math.PI / 2;
         scene.add(crossbar);
 
         const leftPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const leftPost2 = new THREE.Mesh(leftPost2Geometry, postMaterial);
-        leftPost2.position.set(-goalWidth / 2, goalHeight / 2, 2.3); // Equipo 2
+        leftPost2.position.set(-goalWidth / 2, goalHeight / 2, 2.3);
         scene.add(leftPost2);
 
         const rightPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const rightPost2 = new THREE.Mesh(rightPost2Geometry, postMaterial);
-        rightPost2.position.set(goalWidth / 2, goalHeight / 2, 2.3); // Equipo 2
+        rightPost2.position.set(goalWidth / 2, goalHeight / 2, 2.3);
         scene.add(rightPost2);
 
         const crossbar2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
         const crossbar2 = new THREE.Mesh(crossbar2Geometry, postMaterial);
-        crossbar2.position.set(0, goalHeight, 2.3); // Equipo 2
+        crossbar2.position.set(0, goalHeight, 2.3);
         crossbar2.rotation.z = Math.PI / 2;
         scene.add(crossbar2);
 
@@ -157,7 +210,7 @@
         const rightPost2Box = new THREE.Box3().setFromObject(rightPost2);
         const crossbar2Box = new THREE.Box3().setFromObject(crossbar2);
 
-        const goalArea1 = { // Arco del Equipo 1
+        const goalArea1 = {
             minX: -goalWidth / 2,
             maxX: goalWidth / 2,
             minY: 0,
@@ -166,7 +219,7 @@
             maxZ: -2.3 + goalDepth / 2,
         };
 
-        const goalArea2 = { // Arco del Equipo 2
+        const goalArea2 = {
             minX: -goalWidth / 2,
             maxX: goalWidth / 2,
             minY: 0,
@@ -193,17 +246,19 @@
 
             if (inGoal1) {
                 console.log("¡Gol en el arco del Equipo 1! Punto para Equipo 2");
-                team2Score += 1; // Gol en arco 1 suma al Equipo 2
-                updateScoreboard();
+                team2Score++;
                 ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
+                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                updateScoreboard();
                 return true;
             } else if (inGoal2) {
                 console.log("¡Gol en el arco del Equipo 2! Punto para Equipo 1");
-                team1Score += 1; // Gol en arco 2 suma al Equipo 1
-                updateScoreboard();
+                team1Score++;
                 ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
+                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                updateScoreboard();
                 return true;
             }
             return false;
@@ -213,31 +268,34 @@
             if (!ball) return;
             ballBox.setFromObject(ball);
 
-            if (ballBox.intersectsBox(leftPostBox)) {
+            if (ballBox.intersectsBox(leftPostBox) || ballBox.intersectsBox(rightPostBox) ||
+                ballBox.intersectsBox(crossbarBox) || ballBox.intersectsBox(leftPost2Box) ||
+                ballBox.intersectsBox(rightPost2Box) || ballBox.intersectsBox(crossbar2Box)) {
                 velocity.x = -velocity.x;
-                velocity.z = -velocity.z;
-            }
-            if (ballBox.intersectsBox(rightPostBox)) {
-                velocity.x = -velocity.x;
-                velocity.z = -velocity.z;
-            }
-            if (ballBox.intersectsBox(crossbarBox)) {
-                velocity.y = -velocity.y;
-                velocity.z = -velocity.z;
-            }
-            if (ballBox.intersectsBox(leftPost2Box)) {
-                velocity.x = -velocity.x;
-                velocity.z = -velocity.z;
-            }
-            if (ballBox.intersectsBox(rightPost2Box)) {
-                velocity.x = -velocity.x;
-                velocity.z = -velocity.z;
-            }
-            if (ballBox.intersectsBox(crossbar2Box)) {
-                velocity.y = -velocity.y;
                 velocity.z = -velocity.z;
             }
         }
+
+        document.getElementById('resetBall').addEventListener('click', () => {
+            if (ball) {
+                ball.position.set(0, 0, 0);
+                velocity.set(0, 0, 0);
+                socket.send(JSON.stringify({ type: 'resetBall' }));
+                console.log("Pelota reiniciada al centro");
+            }
+        });
+
+        document.getElementById('resetGame').addEventListener('click', () => {
+            if (ball) {
+                ball.position.set(0, 0, 0);
+                velocity.set(0, 0, 0);
+                team1Score = 0;
+                team2Score = 0;
+                socket.send(JSON.stringify({ type: 'resetGame' }));
+                updateScoreboard();
+                console.log("Partida reiniciada");
+            }
+        });
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -264,6 +322,16 @@
                         0,
                         (Math.random() - 0.5) * speed
                     );
+                    socket.send(JSON.stringify({
+                        type: 'ballPosition',
+                        playerId: playerId,
+                        x: ball.position.x,
+                        y: ball.position.y,
+                        z: ball.position.z,
+                        vx: velocity.x,
+                        vy: velocity.y,
+                        vz: velocity.z
+                    }));
                 }
             }
         });
@@ -289,6 +357,18 @@
                 isBallInGoal();
 
                 velocity.multiplyScalar(0.99);
+
+                // Enviar posición de la pelota al servidor
+                socket.send(JSON.stringify({
+                    type: 'ballPosition',
+                    playerId: playerId,
+                    x: ball.position.x,
+                    y: ball.position.y,
+                    z: ball.position.z,
+                    vx: velocity.x,
+                    vy: velocity.y,
+                    vz: velocity.z
+                }));
             }
             renderer.render(scene, camera);
         }
