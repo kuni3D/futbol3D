@@ -3,29 +3,13 @@
 <head>
     <title>Pelota y Arco de Fútbol con Banderín Animado</title>
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
+        body { margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
+        canvas { display: block; width: 100vw; height: 100vh; }
         .header {
-            position: absolute;
-            top: 10px;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
-            box-sizing: border-box;
-            color: #808080;
-            font-size: clamp(16px, 2vw, 18px);
-            z-index: 1;
-            pointer-events: none; /* Permite que los clics pasen al canvas */
+            position: absolute; top: 10px; left: 0; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 20px;
+            box-sizing: border-box; color: #808080; font-size: clamp(16px, 2vw, 18px);
+            z-index: 1; pointer-events: none;
         }
     </style>
 </head>
@@ -49,7 +33,6 @@
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         scene.add(ambientLight);
-
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(5, 10, 5);
         directionalLight.castShadow = true;
@@ -73,18 +56,21 @@
         const loader = new THREE.GLTFLoader();
         let mixer;
 
-        loader.load('pelotita2.gltf', (gltf) => { // Cambia a 'pelotita2.glb' si usas GLB
+        loader.load('pelotita2.gltf', (gltf) => {
             const model = gltf.scene;
+            console.log('Modelo cargado:', model);
             model.traverse((child) => {
                 if (child.isMesh) {
+                    console.log('Mesh encontrado:', child.name);
                     child.castShadow = true;
                     child.receiveShadow = true;
                 }
             });
             scene.add(model);
 
-            ball = model.getObjectByName('pelota');
+            ball = model.getObjectByName('pelota'); // Cambia 'pelota' por el nombre real si es diferente
             if (!ball) console.error('No se encontró la pelota en el modelo');
+            else console.log('Pelota encontrada:', ball);
 
             const banderin = model.getObjectByName('banderin');
             if (!banderin) console.error('No se encontró el banderín en el modelo');
@@ -132,12 +118,9 @@
             if (!ball) return false;
             const ballPosition = ball.position;
             return (
-                ballPosition.x >= goalArea.minX &&
-                ballPosition.x <= goalArea.maxX &&
-                ballPosition.y >= goalArea.minY &&
-                ballPosition.y <= goalArea.maxY &&
-                ballPosition.z >= goalArea.minZ &&
-                ballPosition.z <= goalArea.maxZ
+                ballPosition.x >= goalArea.minX && ballPosition.x <= goalArea.maxX &&
+                ballPosition.y >= goalArea.minY && ballPosition.y <= goalArea.maxY &&
+                ballPosition.z >= goalArea.minZ && ballPosition.z <= goalArea.maxZ
             );
         }
 
@@ -151,11 +134,12 @@
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        window.addEventListener('mousedown', (event) => { // Cambiar 'click' por 'mousedown'
+        window.addEventListener('mousedown', (event) => {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects([ball]);
+            console.log('Intersecciones:', intersects);
             if (intersects.length > 0) {
                 velocity.set(
                     (Math.random() - 0.5) * speed,
