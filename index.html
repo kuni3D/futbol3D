@@ -70,7 +70,7 @@
 
             ball = model.getObjectByName('pelota');
             if (!ball) console.error('No se encontró la pelota en el modelo');
-            else console.log('Pelota encontrada:', ball);
+            else console.log('Pelota asignada:', ball);
 
             const banderin = model.getObjectByName('banderin');
             if (!banderin) console.error('No se encontró el banderín en el modelo');
@@ -136,6 +136,7 @@
         const mouse = new THREE.Vector2();
         window.addEventListener('mousedown', (event) => {
             event.preventDefault();
+            console.log('Clic detectado');
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
