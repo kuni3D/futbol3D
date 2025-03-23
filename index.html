@@ -50,7 +50,7 @@
         let ball;
         let velocity = new THREE.Vector3(0, 0, 0);
         const speed = 0.3;
-        const roomSizeX = 1.27;
+        const roomSizeX = 1.4;
         const roomSizeZ = 2.3;
 
         const loader = new THREE.GLTFLoader();
@@ -96,7 +96,7 @@
             console.error('Error al cargar el modelo:', error);
         });
 
-        // Definir el arco de fútbol
+        // Definir el primer arco (lado z = -2.3)
         const goalWidth = 1.3;
         const goalHeight = 0.7;
         const goalDepth = 0.09;
@@ -119,12 +119,34 @@
         crossbar.rotation.z = Math.PI / 2;
         scene.add(crossbar);
 
+        // Definir el segundo arco (lado z = 2.3)
+        const leftPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const leftPost2 = new THREE.Mesh(leftPost2Geometry, postMaterial);
+        leftPost2.position.set(-goalWidth / 2, goalHeight / 2, 2.3);
+        scene.add(leftPost2);
+
+        const rightPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const rightPost2 = new THREE.Mesh(rightPost2Geometry, postMaterial);
+        rightPost2.position.set(goalWidth / 2, goalHeight / 2, 2.3);
+        scene.add(rightPost2);
+
+        const crossbar2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
+        const crossbar2 = new THREE.Mesh(crossbar2Geometry, postMaterial);
+        crossbar2.position.set(0, goalHeight, 2.3);
+        crossbar2.rotation.z = Math.PI / 2;
+        scene.add(crossbar2);
+
+        // Bounding boxes para colisiones
         const ballBox = new THREE.Box3();
         const leftPostBox = new THREE.Box3().setFromObject(leftPost);
         const rightPostBox = new THREE.Box3().setFromObject(rightPost);
         const crossbarBox = new THREE.Box3().setFromObject(crossbar);
+        const leftPost2Box = new THREE.Box3().setFromObject(leftPost2);
+        const rightPost2Box = new THREE.Box3().setFromObject(rightPost2);
+        const crossbar2Box = new THREE.Box3().setFromObject(crossbar2);
 
-        const goalArea = {
+        // Áreas de gol
+        const goalArea1 = { // Primer arco
             minX: -goalWidth / 2,
             maxX: goalWidth / 2,
             minY: 0,
@@ -133,41 +155,83 @@
             maxZ: -2.3 + goalDepth / 2,
         };
 
+        const goalArea2 = { // Segundo arco
+            minX: -goalWidth / 2,
+            maxX: goalWidth / 2,
+            minY: 0,
+            maxY: goalHeight,
+            minZ: 2.3 - goalDepth / 2,
+            maxZ: 2.3 + goalDepth / 2,
+        };
+
         function isBallInGoal() {
             if (!ball) return false;
             const ballPosition = ball.position;
-            const inGoal = (
-                ballPosition.x >= goalArea.minX && ballPosition.x <= goalArea.maxX &&
-                ballPosition.y >= goalArea.minY && ballPosition.y <= goalArea.maxY &&
-                ballPosition.z >= goalArea.minZ && ballPosition.z <= goalArea.maxZ
+
+            // Verificar gol en el primer arco
+            const inGoal1 = (
+                ballPosition.x >= goalArea1.minX && ballPosition.x <= goalArea1.maxX &&
+                ballPosition.y >= goalArea1.minY && ballPosition.y <= goalArea1.maxY &&
+                ballPosition.z >= goalArea1.minZ && ballPosition.z <= goalArea1.maxZ
             );
-            if (inGoal) {
-                console.log("¡Gol!");
-                // Reiniciar la pelota al centro
-                ball.position.set(0, 0, 0); // Centro de la cancha
-                velocity.set(0, 0, 0); // Detener movimiento
+
+            // Verificar gol en el segundo arco
+            const inGoal2 = (
+                ballPosition.x >= goalArea2.minX && ballPosition.x <= goalArea2.maxX &&
+                ballPosition.y >= goalArea2.minY && ballPosition.y <= goalArea2.maxY &&
+                ballPosition.z >= goalArea2.minZ && ballPosition.z <= goalArea2.maxZ
+            );
+
+            if (inGoal1) {
+                console.log("¡Gol en el arco 1!");
+                ball.position.set(0, 0, 0); // Reiniciar al centro
+                velocity.set(0, 0, 0);
+                return true;
+            } else if (inGoal2) {
+                console.log("¡Gol en el arco 2!");
+                ball.position.set(0, 0, 0); // Reiniciar al centro
+                velocity.set(0, 0, 0);
+                return true;
             }
-            return inGoal;
+            return false;
         }
 
         function checkCollisions() {
             if (!ball) return;
             ballBox.setFromObject(ball);
 
+            // Colisiones con el primer arco
             if (ballBox.intersectsBox(leftPostBox)) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
-                console.log('Colisión con poste izquierdo');
+                console.log('Colisión con poste izquierdo 1');
             }
             if (ballBox.intersectsBox(rightPostBox)) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
-                console.log('Colisión con poste derecho');
+                console.log('Colisión con poste derecho 1');
             }
             if (ballBox.intersectsBox(crossbarBox)) {
                 velocity.y = -velocity.y;
                 velocity.z = -velocity.z;
-                console.log('Colisión con travesaño');
+                console.log('Colisión con travesaño 1');
+            }
+
+            // Colisiones con el segundo arco
+            if (ballBox.intersectsBox(leftPost2Box)) {
+                velocity.x = -velocity.x;
+                velocity.z = -velocity.z;
+                console.log('Colisión con poste izquierdo 2');
+            }
+            if (ballBox.intersectsBox(rightPost2Box)) {
+                velocity.x = -velocity.x;
+                velocity.z = -velocity.z;
+                console.log('Colisión con poste derecho 2');
+            }
+            if (ballBox.intersectsBox(crossbar2Box)) {
+                velocity.y = -velocity.y;
+                velocity.z = -velocity.z;
+                console.log('Colisión con travesaño 2');
             }
         }
 
@@ -216,7 +280,7 @@
                 }
 
                 checkCollisions();
-                isBallInGoal(); // Detectar y reiniciar si hay gol
+                isBallInGoal();
 
                 velocity.multiplyScalar(0.99);
             }
