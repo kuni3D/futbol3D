@@ -56,7 +56,7 @@
         const loader = new THREE.GLTFLoader();
         let mixer;
 
-        loader.load('pelotita2.gltf', (gltf) => {
+        loader.load('pelotita2.glb', (gltf) => {
             const model = gltf.scene;
             console.log('Modelo cargado:', model);
             model.traverse((child) => {
