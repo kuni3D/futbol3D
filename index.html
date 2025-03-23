@@ -11,6 +11,12 @@
             box-sizing: border-box; color: #808080; font-size: clamp(16px, 2vw, 18px);
             z-index: 1; pointer-events: none;
         }
+        #scoreboard {
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            color: #ffffff; font-size: 24px; text-align: center;
+            background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
@@ -18,6 +24,7 @@
         <div>Menu</div>
         <div>Log In / Sign Up</div>
     </div>
+    <div id="scoreboard">Equipo 1: 0 - Equipo 2: 0</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -52,6 +59,14 @@
         const speed = 0.3;
         const roomSizeX = 1.4;
         const roomSizeZ = 2.3;
+
+        let team1Score = 0; // Goles del Equipo 1
+        let team2Score = 0; // Goles del Equipo 2
+        const scoreboard = document.getElementById('scoreboard');
+
+        function updateScoreboard() {
+            scoreboard.textContent = `Equipo 1: ${team1Score} - Equipo 2: ${team2Score}`;
+        }
 
         const loader = new THREE.GLTFLoader();
         let mixer;
@@ -96,7 +111,6 @@
             console.error('Error al cargar el modelo:', error);
         });
 
-        // Definir el primer arco (lado z = -2.3)
         const goalWidth = 1.3;
         const goalHeight = 0.7;
         const goalDepth = 0.09;
@@ -105,38 +119,36 @@
         const leftPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const postMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const leftPost = new THREE.Mesh(leftPostGeometry, postMaterial);
-        leftPost.position.set(-goalWidth / 2, goalHeight / 2, -2.3);
+        leftPost.position.set(-goalWidth / 2, goalHeight / 2, -2.3); // Equipo 1
         scene.add(leftPost);
 
         const rightPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const rightPost = new THREE.Mesh(rightPostGeometry, postMaterial);
-        rightPost.position.set(goalWidth / 2, goalHeight / 2, -2.3);
+        rightPost.position.set(goalWidth / 2, goalHeight / 2, -2.3); // Equipo 1
         scene.add(rightPost);
 
         const crossbarGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
         const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
-        crossbar.position.set(0, goalHeight, -2.3);
+        crossbar.position.set(0, goalHeight, -2.3); // Equipo 1
         crossbar.rotation.z = Math.PI / 2;
         scene.add(crossbar);
 
-        // Definir el segundo arco (lado z = 2.3)
         const leftPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const leftPost2 = new THREE.Mesh(leftPost2Geometry, postMaterial);
-        leftPost2.position.set(-goalWidth / 2, goalHeight / 2, 2.3);
+        leftPost2.position.set(-goalWidth / 2, goalHeight / 2, 2.3); // Equipo 2
         scene.add(leftPost2);
 
         const rightPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
         const rightPost2 = new THREE.Mesh(rightPost2Geometry, postMaterial);
-        rightPost2.position.set(goalWidth / 2, goalHeight / 2, 2.3);
+        rightPost2.position.set(goalWidth / 2, goalHeight / 2, 2.3); // Equipo 2
         scene.add(rightPost2);
 
         const crossbar2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
         const crossbar2 = new THREE.Mesh(crossbar2Geometry, postMaterial);
-        crossbar2.position.set(0, goalHeight, 2.3);
+        crossbar2.position.set(0, goalHeight, 2.3); // Equipo 2
         crossbar2.rotation.z = Math.PI / 2;
         scene.add(crossbar2);
 
-        // Bounding boxes para colisiones
         const ballBox = new THREE.Box3();
         const leftPostBox = new THREE.Box3().setFromObject(leftPost);
         const rightPostBox = new THREE.Box3().setFromObject(rightPost);
@@ -145,8 +157,7 @@
         const rightPost2Box = new THREE.Box3().setFromObject(rightPost2);
         const crossbar2Box = new THREE.Box3().setFromObject(crossbar2);
 
-        // Áreas de gol
-        const goalArea1 = { // Primer arco
+        const goalArea1 = { // Arco del Equipo 1
             minX: -goalWidth / 2,
             maxX: goalWidth / 2,
             minY: 0,
@@ -155,7 +166,7 @@
             maxZ: -2.3 + goalDepth / 2,
         };
 
-        const goalArea2 = { // Segundo arco
+        const goalArea2 = { // Arco del Equipo 2
             minX: -goalWidth / 2,
             maxX: goalWidth / 2,
             minY: 0,
@@ -168,14 +179,12 @@
             if (!ball) return false;
             const ballPosition = ball.position;
 
-            // Verificar gol en el primer arco
             const inGoal1 = (
                 ballPosition.x >= goalArea1.minX && ballPosition.x <= goalArea1.maxX &&
                 ballPosition.y >= goalArea1.minY && ballPosition.y <= goalArea1.maxY &&
                 ballPosition.z >= goalArea1.minZ && ballPosition.z <= goalArea1.maxZ
             );
 
-            // Verificar gol en el segundo arco
             const inGoal2 = (
                 ballPosition.x >= goalArea2.minX && ballPosition.x <= goalArea2.maxX &&
                 ballPosition.y >= goalArea2.minY && ballPosition.y <= goalArea2.maxY &&
@@ -183,13 +192,17 @@
             );
 
             if (inGoal1) {
-                console.log("¡Gol en el arco 1!");
-                ball.position.set(0, 0, 0); // Reiniciar al centro
+                console.log("¡Gol en el arco del Equipo 1! Punto para Equipo 2");
+                team2Score += 1; // Gol en arco 1 suma al Equipo 2
+                updateScoreboard();
+                ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
                 return true;
             } else if (inGoal2) {
-                console.log("¡Gol en el arco 2!");
-                ball.position.set(0, 0, 0); // Reiniciar al centro
+                console.log("¡Gol en el arco del Equipo 2! Punto para Equipo 1");
+                team1Score += 1; // Gol en arco 2 suma al Equipo 1
+                updateScoreboard();
+                ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
                 return true;
             }
@@ -200,38 +213,29 @@
             if (!ball) return;
             ballBox.setFromObject(ball);
 
-            // Colisiones con el primer arco
             if (ballBox.intersectsBox(leftPostBox)) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
-                console.log('Colisión con poste izquierdo 1');
             }
             if (ballBox.intersectsBox(rightPostBox)) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
-                console.log('Colisión con poste derecho 1');
             }
             if (ballBox.intersectsBox(crossbarBox)) {
                 velocity.y = -velocity.y;
                 velocity.z = -velocity.z;
-                console.log('Colisión con travesaño 1');
             }
-
-            // Colisiones con el segundo arco
             if (ballBox.intersectsBox(leftPost2Box)) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
-                console.log('Colisión con poste izquierdo 2');
             }
             if (ballBox.intersectsBox(rightPost2Box)) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
-                console.log('Colisión con poste derecho 2');
             }
             if (ballBox.intersectsBox(crossbar2Box)) {
                 velocity.y = -velocity.y;
                 velocity.z = -velocity.z;
-                console.log('Colisión con travesaño 2');
             }
         }
 
@@ -251,14 +255,16 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(ball);
-            console.log('Intersecciones:', intersects);
-            if (intersects.length > 0) {
-                velocity.set(
-                    (Math.random() - 0.5) * speed,
-                    0,
-                    (Math.random() - 0.5) * speed
-                );
+            if (ball) {
+                const intersects = raycaster.intersectObject(ball);
+                console.log('Intersecciones:', intersects);
+                if (intersects.length > 0) {
+                    velocity.set(
+                        (Math.random() - 0.5) * speed,
+                        0,
+                        (Math.random() - 0.5) * speed
+                    );
+                }
             }
         });
 
