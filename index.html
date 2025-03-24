@@ -169,7 +169,7 @@
         const postRadius = 0.05;
 
         const leftPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
-        const postMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const postMaterial = new THREE.MeshBasicMaterial({ color: 0xAFAFAF });
         const leftPost = new THREE.Mesh(leftPostGeometry, postMaterial);
         leftPost.position.set(-goalWidth / 2, goalHeight -1 / 2, -2.35);
         scene.add(leftPost);
