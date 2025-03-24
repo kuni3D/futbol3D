@@ -110,7 +110,7 @@
         let velocity = new THREE.Vector3(0, 0, 0);
         const speed = 0.3;
         const roomSizeX = 1.4;
-        const roomSizeZ = 2.3;
+        const roomSizeZ = 2.35;
 
         let team1Score = 0;
         let team2Score = 0;
@@ -391,11 +391,25 @@
                 const intersects = raycaster.intersectObject(ball);
                 console.log('Intersecciones:', intersects);
                 if (intersects.length > 0) {
+                    const intersection = intersects[0];
+                    const hitPoint = intersection.point; // Punto donde se golpeó la pelota
+                    const ballCenter = ball.position; // Centro de la pelota
+
+                    // Dirección desde el centro de la pelota hacia el punto de contacto
+                    const direction = new THREE.Vector3()
+                        .subVectors(hitPoint, ballCenter)
+                        .normalize(); // Normalizamos para que tenga longitud 1
+
+                    // Invertimos la dirección (si golpeás la izquierda, va a la derecha)
+                    direction.multiplyScalar(-1);
+
+                    // Aplicamos la velocidad en esa dirección
                     velocity.set(
-                        (Math.random() - 0.5) * speed,
-                        0,
-                        (Math.random() - 0.5) * speed
+                        direction.x * speed,
+                        0, // Sin movimiento vertical por ahora
+                        direction.z * speed
                     );
+
                     socket.send(JSON.stringify({
                         type: 'ballPosition',
                         playerId: playerId,
@@ -414,7 +428,7 @@
         window.addEventListener('touchstart', (event) => {
             event.preventDefault();
             console.log('Toque detectado');
-            const touch = event.touches[0]; // Primer toque
+            const touch = event.touches[0];
             mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, camera);
@@ -422,11 +436,25 @@
                 const intersects = raycaster.intersectObject(ball);
                 console.log('Intersecciones táctiles:', intersects);
                 if (intersects.length > 0) {
+                    const intersection = intersects[0];
+                    const hitPoint = intersection.point; // Punto donde se golpeó la pelota
+                    const ballCenter = ball.position; // Centro de la pelota
+
+                    // Dirección desde el centro de la pelota hacia el punto de contacto
+                    const direction = new THREE.Vector3()
+                        .subVectors(hitPoint, ballCenter)
+                        .normalize(); // Normalizamos para que tenga longitud 1
+
+                    // Invertimos la dirección (si golpeás la izquierda, va a la derecha)
+                    direction.multiplyScalar(-1);
+
+                    // Aplicamos la velocidad en esa dirección
                     velocity.set(
-                        (Math.random() - 0.5) * speed,
-                        0,
-                        (Math.random() - 0.5) * speed
+                        direction.x * speed,
+                        0, // Sin movimiento vertical por ahora
+                        direction.z * speed
                     );
+
                     socket.send(JSON.stringify({
                         type: 'ballPosition',
                         playerId: playerId,
