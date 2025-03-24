@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Polota y Arco de Fútbol con Banderín Animado</title>
+    <title>Pelota y Arco</title>
     <style>
         body { margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
         canvas { display: block; width: 100vw; height: 100vh; }
@@ -44,6 +44,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
     <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script src="https://unpkg.com/three@0.134.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/shaders/ColorCorrectionShader.js"></script>
+
     <script>
         const socket = new WebSocket('ws://localhost:8080');
         let playerId = null;
@@ -89,6 +96,18 @@
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
+
+        // Configurar EffectComposer
+const composer = new THREE.EffectComposer(renderer);
+const renderPass = new THREE.RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+// Filtro de corrección de color
+const colorCorrectionPass = new THREE.ShaderPass(THREE.ColorCorrectionShader);
+colorCorrectionPass.uniforms['powRGB'].value = new THREE.Vector3(1, 1, 1); // Sin exagerar contraste
+colorCorrectionPass.uniforms['mulRGB'].value = new THREE.Vector3(0.7, 0.7, 0.7); // Reduce saturación
+colorCorrectionPass.uniforms['addRGB'].value = new THREE.Vector3(0.31, 0.3, 0.3); // Sin tinte extra
+composer.addPass(colorCorrectionPass);
 
         const ambientLight = new THREE.AmbientLight(0xC9E6F0, 1.5);
         scene.add(ambientLight);
@@ -494,8 +513,9 @@
                 updateFireworks(); // Actualizar fuegos artificiales
 
                 velocity.multiplyScalar(0.99);
-            }
-            renderer.render(scene, camera);
+              }
+              // renderer.render(scene, camera); // Comentar esta línea
+              composer.render(); // Usar composer en lugar de renderer directo
         }
         animate();
 
