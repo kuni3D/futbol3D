@@ -35,7 +35,7 @@
         <div>Menu</div>
         <div>Log In / Sign Up</div>
     </div>
-    <div id="scoreboard" class="scoreboard">Equipo 1: 0 - Equipo 2: 0</div>
+    <div id="scoreboard" class="scoreboard">Equipo 1: 0      -      Equipo 2: 0</div>
     <div class="buttons">
         <button id="resetBall">Reiniciar Pelota</button>
         <button id="resetGame">Reiniciar Partida</button>
@@ -379,6 +379,8 @@
 
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
+
+        // Evento para mouse (PC)
         window.addEventListener('mousedown', (event) => {
             event.preventDefault();
             console.log('Clic detectado');
@@ -388,6 +390,37 @@
             if (ball) {
                 const intersects = raycaster.intersectObject(ball);
                 console.log('Intersecciones:', intersects);
+                if (intersects.length > 0) {
+                    velocity.set(
+                        (Math.random() - 0.5) * speed,
+                        0,
+                        (Math.random() - 0.5) * speed
+                    );
+                    socket.send(JSON.stringify({
+                        type: 'ballPosition',
+                        playerId: playerId,
+                        x: ball.position.x,
+                        y: ball.position.y,
+                        z: ball.position.z,
+                        vx: velocity.x,
+                        vy: velocity.y,
+                        vz: velocity.z
+                    }));
+                }
+            }
+        });
+
+        // Evento para toque (móviles)
+        window.addEventListener('touchstart', (event) => {
+            event.preventDefault();
+            console.log('Toque detectado');
+            const touch = event.touches[0]; // Primer toque
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            if (ball) {
+                const intersects = raycaster.intersectObject(ball);
+                console.log('Intersecciones táctiles:', intersects);
                 if (intersects.length > 0) {
                     velocity.set(
                         (Math.random() - 0.5) * speed,
