@@ -26,12 +26,20 @@ export class GameRoom {
       team1Score: this.team1Score,
       team2Score: this.team2Score
     }));
+
     webSocket.addEventListener("message", async (event) => {
-      const data = JSON.parse(event.data);
-      this.handleMessage(playerId, data);
+      try {
+        const data = JSON.parse(event.data);
+        console.log(`Mensaje recibido de ${playerId}:`, data); // Log para depurar
+        this.handleMessage(playerId, data);
+      } catch (error) {
+        console.error(`Error al parsear mensaje de ${playerId}:`, error.message);
+      }
     });
+
     webSocket.addEventListener("close", () => {
       this.players.delete(playerId);
+      console.log(`Jugador ${playerId} desconectado`);
     });
   }
 
