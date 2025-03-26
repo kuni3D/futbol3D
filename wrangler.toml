@@ -1,0 +1,7 @@
+name = "multiplayer-game-v2"
+main = "worker.js"
+compatibility_date = "2025-03-26"
+account_id = "1f9c1c5f7652f87a70ef146cefee9308"
+
+[assets]
+directory = "../"

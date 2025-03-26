@@ -1,0 +1,810 @@
+<html><head>
+  <meta http-equiv="Content-Security-Policy" content="
+    script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;
+    connect-src 'self' wss://*;
+">
+    <title>Pro Evolution Goose 25</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        .header {
+            position: absolute; top: 10px; left: 0; width: 100%;
+            display: flex; justify-content: space-between; padding: 0 20px;
+            box-sizing: border-box; color: #808080; font-size: clamp(16px, 2vw, 18px);
+            z-index: 1; pointer-events: none;
+        }
+        .scoreboard {
+            position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+            color: #ffffff; font-size: 24px; text-align: center;
+            background: rgba(0, 0, 0, 0.5); padding: 5px 15px; border-radius: 5px;
+            z-index: 1;
+        }
+        .buttons {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 1; display: flex; gap: 10px;
+        }
+        button {
+            padding: 5px 10px; font-size: 16px; background: #ffffff;
+            border: none; border-radius: 5px; cursor: pointer;
+        }
+        button:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>Goose Football '25</div>
+        <div>by Kuni3D</div>
+    </div>
+    <div id="scoreboard" class="scoreboard">Equipo 1: 0 - Equipo 2: 0</div>
+    <div class="buttons">
+        <button id="resetBallButton">Reiniciar Pelota</button>
+        <button id="resetGameButton">Reiniciar Partida</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/shaders/ColorCorrectionShader.js"></script>
+
+    <script>
+    const playerId = Date.now().toString(); // ID único para el jugador
+    const roomId = "default"; // Puedes usar diferentes salas si quieres
+    let socket;
+
+    function connectWebSocket() {
+        socket = new WebSocket('wss://multiplayer-game-v2.kuni3d.workers.dev/websocket?id=default:' + Date.now());
+
+        socket.onopen = () => {
+            console.log('Conectado al servidor WebSocket');
+        };
+
+        socket.onerror = (error) => {
+            console.error('Error en WebSocket:', error);
+        };
+
+        socket.onclose = () => {
+            console.log('Conexión WebSocket cerrada, intentando reconectar...');
+            setTimeout(connectWebSocket, 3000);
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'playerId') {
+                console.log('Soy el jugador', data.id);
+                if (data.playerNumber === 1) {
+                    myCharacter = 'ganzito';
+                    myArmature = armature;
+                    myCurrentAction = 'idlecomun';
+                    myActions = actions;
+                    kickAnimation = 'patear';
+                    idleAnimation = 'idlecomun';
+                } else if (data.playerNumber === 2) {
+                    myCharacter = 'ganzit2';
+                    myArmature = armatur2;
+                    myCurrentAction = '2quieto';
+                    myActions = actions2;
+                    kickAnimation = '2patea';
+                    idleAnimation = '2quieto';
+                }
+            } else if (data.type === 'characterPosition') {
+                if (data.playerId !== playerId) {
+                    const otherCharacter = data.character === 'ganzito' ? armature : armatur2;
+                    const otherActions = data.character === 'ganzito' ? actions : actions2;
+                    if (otherCharacter) {
+                        otherCharacter.position.set(data.x, data.y, data.z);
+                        otherCharacter.rotation.y = data.rotationY;
+                        if (otherActions[data.action]) {
+                            if (otherActions.currentAction !== data.action) {
+                                if (otherActions[otherActions.currentAction]) {
+                                    otherActions[otherActions.currentAction].fadeOut(0.25);
+                                }
+                                otherActions[data.action].reset().fadeIn(0.25).play();
+                                otherActions.currentAction = data.action;
+                            }
+                        }
+                    }
+                }
+            } else if (data.type === 'ballPosition') {
+                if (ball && data.playerId !== playerId) {
+                    ball.position.set(data.x, data.y, data.z);
+                    velocity.set(data.vx, data.vy, data.vz);
+                }
+            } else if (data.type === 'score') {
+                team1Score = data.team1Score;
+                team2Score = data.team2Score;
+                updateScoreboard();
+            } else if (data.type === 'resetBall') {
+                if (ball) {
+                    ball.position.set(0, 0, 0);
+                    velocity.set(0, 0, 0);
+                }
+            } else if (data.type === 'resetGame') {
+                if (ball) {
+                    ball.position.set(0, 0, 0);
+                    velocity.set(0, 0, 0);
+                    team1Score = 0;
+                    team2Score = 0;
+                    updateScoreboard();
+                }
+            }
+        };
+    }
+
+    connectWebSocket();
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const GRAVITY = -0.001;
+
+        const composer = new THREE.EffectComposer(renderer);
+        const renderPass = new THREE.RenderPass(scene, camera);
+        composer.addPass(renderPass);
+
+        const colorCorrectionPass = new THREE.ShaderPass(THREE.ColorCorrectionShader);
+        colorCorrectionPass.uniforms['powRGB'].value = new THREE.Vector3(1, 1, 1);
+        colorCorrectionPass.uniforms['mulRGB'].value = new THREE.Vector3(0.7, 0.7, 0.7);
+        colorCorrectionPass.uniforms['addRGB'].value = new THREE.Vector3(0.31, 0.3, 0.3);
+        composer.addPass(colorCorrectionPass);
+
+        const ambientLight = new THREE.AmbientLight(0xC9E6F0, 1.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 20;
+        directionalLight.shadow.bias = -0.01;
+        scene.add(directionalLight);
+
+        let ball;
+        let velocity = new THREE.Vector3(0, 0, 0);
+        const speed = 0.1;
+        const roomSizeX = 1.4;
+        const roomSizeZ = 2.35;
+
+        let team1Score = 0;
+        let team2Score = 0;
+        const scoreboard = document.getElementById('scoreboard');
+
+        function updateScoreboard() {
+            scoreboard.textContent = `Equipo 1: ${team1Score} - Equipo 2: ${team2Score}`;
+        }
+
+        const loader = new THREE.GLTFLoader();
+        const clock = new THREE.Clock();
+
+        let mixer, ganzito, armature, actions = {};
+        let mixer2, ganzit2, armatur2, actions2 = {};
+        let currentAction = 'idlecomun';  // Para ganzito
+        let currentAction2 = '2quieto'; // Para ganzit2
+        let myCharacter = null;           // Indica si controlo ganzito o ganzit2
+
+        loader.load('pelotita2.glb', (gltf) => {
+            const model = gltf.scene;
+            console.log('Modelo cargado:', model);
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    console.log('Mesh encontrado:', child.name, 'Posición:', child.position);
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+                if (child.isBone) {
+                    console.log('Hueso encontrado:', child.name);
+                }
+            });
+            scene.add(model);
+
+            let brickGeometry = null;
+            let brickMaterial = null;
+            const brickInstances = new Array(1292);
+            const bricksToRemove = [];
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.name === 'ladrillo' && !brickGeometry) {
+                        brickGeometry = child.geometry.clone();
+                        brickMaterial = new THREE.MeshPhongMaterial({ color: 0x7B7B7B });
+                        console.log('Geometría base encontrada en "ladrillo"');
+                    }
+                    const match = child.name.match(/^ladrillo(\d+)?$/);
+                    if (match) {
+                        const index = match[1] ? parseInt(match[1], 10) - 1 : 0;
+                        if (index >= 0 && index < 1292) {
+                            const matrix = new THREE.Matrix4()
+                                .makeRotationFromQuaternion(child.quaternion)
+                                .scale(child.scale)
+                                .setPosition(child.position);
+                            brickInstances[index] = matrix;
+                            bricksToRemove.push(child);
+                            console.log(`Ladrillo ${child.name} asignado al índice ${index}, Posición:`, child.position, 'Escala:', child.scale);
+                        }
+                    }
+                }
+            });
+
+            if (brickGeometry && brickInstances.some(m => m !== undefined)) {
+                const instancedBricks = new THREE.InstancedMesh(brickGeometry, brickMaterial, 1292);
+                instancedBricks.castShadow = true;
+                instancedBricks.receiveShadow = true;
+
+                brickInstances.forEach((matrix, index) => {
+                    if (matrix) {
+                        instancedBricks.setMatrixAt(index, matrix);
+                    }
+                });
+
+                instancedBricks.instanceMatrix.needsUpdate = true;
+                scene.add(instancedBricks);
+                console.log(`Éxito: ${brickInstances.filter(m => m !== undefined).length} de 1292 ladrillos instanciados`);
+
+                bricksToRemove.forEach((brick) => {
+                    brick.parent.remove(brick);
+                });
+
+                camera.position.set(0, 5, 0);
+                camera.lookAt(0, 0, 0);
+            } else {
+                console.error('Fallo: No se encontró "ladrillo" o no hay instancias válidas');
+            }
+
+            ball = model.getObjectByName('pelota');
+            if (!ball) console.error('No se encontró la pelota en el modelo');
+            else console.log('Pelota asignada:', ball);
+
+            // Configurar ganzito y armature
+            ganzito = model.getObjectByName('ganzito');
+            armature = model.getObjectByName('armature');
+            if (ganzito && armature) {
+                console.log('Ganzito y armature encontrados');
+                mixer = new THREE.AnimationMixer(armature);
+                const animationNames = ['idlecomun', 'correr', 'patear'];
+                gltf.animations.forEach((clip) => {
+                    const clipNameLower = clip.name.toLowerCase();
+                    if (animationNames.includes(clipNameLower)) {
+                        actions[clipNameLower] = mixer.clipAction(clip);
+                        actions[clipNameLower].setLoop(clipNameLower === 'patear' ? THREE.LoopOnce : THREE.LoopRepeat);
+                        console.log(`Animación para ganzito ${clipNameLower} cargada, duración: ${clip.duration} segundos`);
+                    }
+                });
+                if (actions['idlecomun']) {
+                    actions['idlecomun'].play();
+                    console.log('idlecomun iniciado para ganzito');
+                }
+            } else {
+                console.error('Falta ganzito o armature en el modelo');
+            }
+
+            // Configurar ganzit2 y armatur2
+            ganzit2 = model.getObjectByName('ganzit2');
+            armatur2 = model.getObjectByName('armatur2');
+console.log('Buscando ganzit2:', ganzit2); // Agrega este log
+console.log('Buscando armatur2:', armatur2); // Agrega este log
+console.log('¿Se cumple la condición if (ganzit2 && armatur2)?', ganzit2 && armatur2); // Nuevo log
+            if (ganzit2 && armatur2) {
+                console.log('Ganzit2 y armatur2 encontrados');
+                armatur2.position.set(0, 0.11, 0); // Posición inicial opuesta
+                mixer2 = new THREE.AnimationMixer(armatur2);
+console.log('mixer2 inicializado:', mixer2); // Nuevo log
+                const animationNames2 = ['2quieto', '2corre', '2patea'];
+                gltf.animations.forEach((clip) => {
+                    const clipNameLower = clip.name.toLowerCase();
+                    if (animationNames2.includes(clipNameLower)) {
+                        actions2[clipNameLower] = mixer2.clipAction(clip);
+                        actions2[clipNameLower].setLoop(clipNameLower === '2patea' ? THREE.LoopOnce : THREE.LoopRepeat);
+                        console.log(`Animación para ganzit2 ${clipNameLower} cargada, duración: ${clip.duration} segundos`);
+                    }
+                });
+                if (actions2['2quieto']) {
+                    actions2['2quieto'].play();
+                    console.log('2quieto iniciado para ganzit2');
+                }
+            } else {
+                console.warn('No se encontraron ganzit2 o armatur2 en el modelo');
+            }
+
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+        }, undefined, (error) => {
+            console.error('Error al cargar el modelo:', error);
+        });
+
+        // Control de teclas
+        const keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false,
+            space: false
+        };
+
+        window.addEventListener('keydown', (event) => {
+            const key = event.key.toLowerCase();
+            const code = event.code;
+            console.log('Tecla presionada:', key, 'Código:', code);
+
+            if (key === 'w' || code === 'KeyW') keys.w = true;
+            if (key === 'a' || code === 'KeyA') keys.a = true;
+            if (key === 's' || code === 'KeyS') keys.s = true;
+            if (key === 'd' || code === 'KeyD') keys.d = true;
+            if (key === ' ' || code === 'Space') keys.space = true;
+
+            console.log(`Tecla ${key} (código: ${code}) presionada, keys:`, keys);
+        });
+
+        window.addEventListener('keyup', (event) => {
+            const key = event.key.toLowerCase();
+            const code = event.code;
+
+            if (key === 'w' || code === 'KeyW') keys.w = false;
+            if (key === 'a' || code === 'KeyA') keys.a = false;
+            if (key === 's' || code === 'KeyS') keys.s = false;
+            if (key === 'd' || code === 'KeyD') keys.d = false;
+            if (key === ' ' || code === 'Space') keys.space = false;
+
+            console.log(`Tecla ${key} (código: ${code}) soltada, keys:`, keys);
+        });
+
+        const goalWidth = 1.3;
+        const goalHeight = 0.7;
+        const goalDepth = 0.2;
+        const postRadius = 0.05;
+
+        const leftPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const postMaterial = new THREE.MeshBasicMaterial({ color: 0xE4E4E4 });
+        const leftPost = new THREE.Mesh(leftPostGeometry, postMaterial);
+        leftPost.position.set(-goalWidth / 2, goalHeight -1 / 2, -2.35);
+        scene.add(leftPost);
+
+        const rightPostGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const rightPost = new THREE.Mesh(rightPostGeometry, postMaterial);
+        rightPost.position.set(goalWidth / 2, goalHeight -1 / 2, -2.35);
+        scene.add(rightPost);
+
+        const crossbarGeometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
+        const crossbar = new THREE.Mesh(crossbarGeometry, postMaterial);
+        crossbar.position.set(0, goalHeight -0.18, -2.35);
+        crossbar.rotation.z = Math.PI / 2;
+        scene.add(crossbar);
+
+        const leftPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const leftPost2 = new THREE.Mesh(leftPost2Geometry, postMaterial);
+        leftPost2.position.set(-goalWidth / 2, goalHeight -1 / 2, 2.35);
+        scene.add(leftPost2);
+
+        const rightPost2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32);
+        const rightPost2 = new THREE.Mesh(rightPost2Geometry, postMaterial);
+        rightPost2.position.set(goalWidth / 2, goalHeight -1 / 2, 2.35);
+        scene.add(rightPost2);
+
+        const crossbar2Geometry = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32);
+        const crossbar2 = new THREE.Mesh(crossbar2Geometry, postMaterial);
+        crossbar2.position.set(0, goalHeight -0.18, 2.35);
+        crossbar2.rotation.z = Math.PI / 2;
+        scene.add(crossbar2);
+
+        const ballBox = new THREE.Box3();
+        const ganzitoBox = new THREE.Box3();
+        const ganzit2Box = new THREE.Box3();
+        const leftPostBox = new THREE.Box3().setFromObject(leftPost);
+        const rightPostBox = new THREE.Box3().setFromObject(rightPost);
+        const crossbarBox = new THREE.Box3().setFromObject(crossbar);
+        const leftPost2Box = new THREE.Box3().setFromObject(leftPost2);
+        const rightPost2Box = new THREE.Box3().setFromObject(rightPost2);
+        const crossbar2Box = new THREE.Box3().setFromObject(crossbar2);
+
+        const goalArea1 = {
+            minX: -goalWidth / 2,
+            maxX: goalWidth / 2,
+            minY: 0,
+            maxY: goalHeight,
+            minZ: -2.3 - goalDepth / 2,
+            maxZ: -2.3 + goalDepth / 2,
+        };
+
+        const goalArea2 = {
+            minX: -goalWidth / 2,
+            maxX: goalWidth / 2,
+            minY: 0,
+            maxY: goalHeight,
+            minZ: 2.3 - goalDepth / 2,
+            maxZ: 2.3 + goalDepth / 2,
+        };
+
+        let fireworks = [];
+
+        function createFireworks(x, y, z) {
+            const particleCount = 50;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const velocities = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+
+                const color = new THREE.Color();
+                color.setHSL(Math.random(), 1.0, 0.5);
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+
+                velocities.push(
+                    new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.1,
+                        Math.random() * 0.15,
+                        (Math.random() - 0.5) * 0.1
+                    )
+                );
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 1.0
+            });
+
+            const firework = new THREE.Points(geometry, material);
+            firework.userData = { velocities, life: 2.0 };
+            scene.add(firework);
+            fireworks.push(firework);
+        }
+
+        function updateFireworks() {
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const firework = fireworks[i];
+                const positions = firework.geometry.attributes.position.array;
+                const velocities = firework.userData.velocities;
+                firework.userData.life -= 0.016;
+
+                for (let j = 0; j < positions.length / 3; j++) {
+                    positions[j * 3] += velocities[j].x;
+                    positions[j * 3 + 1] += velocities[j].y - 0.002;
+                    positions[j * 3 + 2] += velocities[j].z;
+
+                    velocities[j].y -= 0.001;
+                }
+
+                firework.geometry.attributes.position.needsUpdate = true;
+                firework.material.opacity = firework.userData.life / 2.0;
+
+                if (firework.userData.life <= 0) {
+                    scene.remove(firework);
+                    fireworks.splice(i, 1);
+                }
+            }
+        }
+
+        function isBallInGoal() {
+            if (!ball) return false;
+            const ballPosition = ball.position;
+
+            const inGoal1 = (
+                ballPosition.x >= goalArea1.minX && ballPosition.x <= goalArea1.maxX &&
+                ballPosition.y >= goalArea1.minY && ballPosition.y <= goalArea1.maxY &&
+                ballPosition.z >= goalArea1.minZ && ballPosition.z <= goalArea1.maxZ
+            );
+
+            const inGoal2 = (
+                ballPosition.x >= goalArea2.minX && ballPosition.x <= goalArea2.maxX &&
+                ballPosition.y >= goalArea2.minY && ballPosition.y <= goalArea2.maxY &&
+                ballPosition.z >= goalArea2.minZ && ballPosition.z <= goalArea2.maxZ
+            );
+
+            if (inGoal1) {
+                console.log("¡Gol en el arco del Equipo 1! Punto para Equipo 2");
+                team2Score++;
+                ball.position.set(0, 0, 0);
+                velocity.set(0, 0, 0);
+                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                createFireworks(0, 2, -2.3);
+                updateScoreboard();
+                return true;
+            } else if (inGoal2) {
+                console.log("¡Gol en el arco del Equipo 2! Punto para Equipo 1");
+                team1Score++;
+                ball.position.set(0, 0, 0);
+                velocity.set(0, 0, 0);
+                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                createFireworks(0, 2, 2.3);
+                updateScoreboard();
+                return true;
+            }
+            return false;
+        }
+
+        function checkCollisions() {
+            if (!ball) return;
+            ballBox.setFromObject(ball);
+
+            if (ballBox.intersectsBox(leftPostBox) || ballBox.intersectsBox(rightPostBox) ||
+                ballBox.intersectsBox(crossbarBox) || ballBox.intersectsBox(leftPost2Box) ||
+                ballBox.intersectsBox(rightPost2Box) || ballBox.intersectsBox(crossbar2Box)) {
+                velocity.x = -velocity.x;
+                velocity.z = -velocity.z;
+            }
+        }
+
+        function checkCharacterBallCollision() {
+            if (!ball) return false;
+            let collided = false;
+
+            if (ganzito) {
+                ballBox.setFromObject(ball);
+                ballBox.expandByScalar(0.08);
+                ganzitoBox.setFromObject(ganzito);
+                ganzitoBox.expandByScalar(0.09);
+
+                if (ballBox.intersectsBox(ganzitoBox) && myCharacter === 'ganzito') {
+                    let direction = new THREE.Vector3(0, 0, 0);
+                    if (keys.w) direction.z = -1;
+                    if (keys.s) direction.z = 1;
+                    if (keys.a) direction.x = -1;
+                    if (keys.d) direction.x = 1;
+                    direction.normalize();
+                    const kickForce = 0.01;
+                    velocity.x += direction.x * kickForce;
+                    velocity.z += direction.z * kickForce;
+                    collided = true;
+                }
+            }
+
+            if (ganzit2) {
+                ballBox.setFromObject(ball);
+                ballBox.expandByScalar(0.08);
+                ganzit2Box.setFromObject(ganzit2);
+                ganzit2Box.expandByScalar(0.09);
+
+                if (ballBox.intersectsBox(ganzit2Box) && myCharacter === 'ganzit2') {
+                    let direction = new THREE.Vector3(0, 0, 0);
+                    if (keys.w) direction.z = -1;
+                    if (keys.s) direction.z = 1;
+                    if (keys.a) direction.x = -1;
+                    if (keys.d) direction.x = 1;
+                    direction.normalize();
+                    const kickForce = 0.01;
+                    velocity.x += direction.x * kickForce;
+                    velocity.z += direction.z * kickForce;
+                    collided = true;
+                }
+            }
+            return collided;
+        }
+
+        function checkKickCollision() {
+            if (!ball) return false;
+            let kicked = false;
+
+            if (ganzito && myCharacter === 'ganzito' && currentAction === 'patear' && actions['patear']) {
+                ballBox.setFromObject(ball);
+                ballBox.expandByScalar(0.1);
+                ganzitoBox.setFromObject(ganzito);
+                ganzitoBox.expandByScalar(0.2);
+
+                const kickTime = actions['patear'].getClip().duration * 0.5;
+                const currentTime = actions['patear'].time;
+                const kickWindow = 0.1;
+
+                if (Math.abs(currentTime - kickTime) < kickWindow && ballBox.intersectsBox(ganzitoBox)) {
+                    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(armature.quaternion).normalize();
+                    const kickForce = 0.1;
+                    const liftForce = 0.03;
+                    velocity.x = direction.x * kickForce;
+                    velocity.z = direction.z * kickForce;
+                    velocity.y = liftForce;
+                    kicked = true;
+                }
+            }
+
+            if (ganzit2 && myCharacter === 'ganzit2' && currentAction2 === '2patea' && actions2['2patea']) {
+                ballBox.setFromObject(ball);
+                ballBox.expandByScalar(0.1);
+                ganzit2Box.setFromObject(ganzit2);
+                ganzit2Box.expandByScalar(0.2);
+
+                const kickTime = actions2['2patea'].getClip().duration * 0.5;
+                const currentTime = actions2['2patea'].time;
+                const kickWindow = 0.1;
+
+                if (Math.abs(currentTime - kickTime) < kickWindow && ballBox.intersectsBox(ganzit2Box)) {
+                    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(armatur2.quaternion).normalize();
+                    const kickForce = 0.1;
+                    const liftForce = 0.03;
+                    velocity.x = direction.x * kickForce;
+                    velocity.z = direction.z * kickForce;
+                    velocity.y = liftForce;
+                    kicked = true;
+                }
+            }
+            return kicked;
+        }
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 5;
+        controls.maxDistance = 20;
+        controls.maxPolarAngle = Math.PI / 2.2;
+
+
+        const ganzitoSpeed = 0.035; // Velocidad reducida un 30%
+        const fadeDuration = 0.2;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            controls.update();
+
+            if (mixer) mixer.update(delta);
+            if (mixer2) {
+                mixer2.update(delta);
+            } else {
+                console.log('mixer2 es undefined, no se pueden actualizar animaciones para ganzit2');
+            }
+
+            if (myArmature && myCharacter) {
+                const speed = 0.1;
+                const direction = new THREE.Vector3();
+                if (keys.w) direction.z -= 1;
+                if (keys.s) direction.z += 1;
+                if (keys.a) direction.x -= 1;
+                if (keys.d) direction.x += 1;
+                direction.normalize().multiplyScalar(speed);
+                myArmature.position.add(direction);
+
+                if (direction.length() > 0) {
+                    myArmature.rotation.y = Math.atan2(direction.x, direction.z);
+                    const runAnimation = myCharacter === 'ganzito' ? 'correr' : '2corre';
+                    if (myCurrentAction !== runAnimation && myActions[runAnimation]) {
+                        if (myActions[myCurrentAction]) myActions[myCurrentAction].fadeOut(fadeDuration || 0.25);
+                        myActions[runAnimation].reset().fadeIn(fadeDuration || 0.25).play();
+                        myCurrentAction = runAnimation;
+                    }
+                } else if ((myCurrentAction === 'correr' || myCurrentAction === '2corre') && myActions[idleAnimation]) {
+                    myActions[myCurrentAction].fadeOut(fadeDuration || 0.25);
+                    myActions[idleAnimation].reset().fadeIn(fadeDuration || 0.25).play();
+                    myCurrentAction = idleAnimation;
+                }
+
+                if (keys.space && myCurrentAction && kickAnimation && myActions && myActions[kickAnimation]) {
+                    if (myActions[myCurrentAction]) myActions[myCurrentAction].fadeOut(fadeDuration || 0.25);
+                    myActions[kickAnimation].reset().fadeIn(fadeDuration || 0.25).play();
+                    myCurrentAction = kickAnimation;
+                    const message = {
+                        type: 'characterPosition',
+                        playerId: playerId || 'unknown',
+                        character: myCharacter || 'unknown',
+                        x: myArmature?.position?.x || 0,
+                        y: myArmature?.position?.y || 0,
+                        z: myArmature?.position?.z || 0,
+                        rotationY: myArmature?.rotation?.y || 0,
+                        action: myCurrentAction
+                    };
+                    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+                    else console.log('No se puede enviar mensaje, WebSocket no está abierto');
+
+                    myActions[kickAnimation].getMixer().addEventListener('finished', (e) => {
+                        if (e.action === myActions[kickAnimation] && myActions[idleAnimation]) {
+                            myActions[kickAnimation].stop();
+                            myActions[idleAnimation].reset().play();
+                            myCurrentAction = idleAnimation;
+                            const message = {
+                                type: 'characterPosition',
+                                playerId: playerId || 'unknown',
+                                character: myCharacter || 'unknown',
+                                x: myArmature?.position?.x || 0,
+                                y: myArmature?.position?.y || 0,
+                                z: myArmature?.position?.z || 0,
+                                rotationY: myArmature?.rotation?.y || 0,
+                                action: myCurrentAction
+                            };
+                            if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+                            else console.log('No se puede enviar mensaje, WebSocket no está abierto');
+                        }
+                    }, { once: true });
+                }
+            }
+
+            composer.render();
+        }
+
+        // Funciones para los botones
+        function resetBall() {
+            console.log('Botón "Reiniciar pelota" presionado');
+            if (ball) {
+                ball.position.set(0, 0, 0);
+                velocity.set(0, 0, 0);
+                console.log('Pelota reiniciada a posición:', ball.position, 'Velocidad:', velocity);
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'ballPosition',
+                        playerId: playerId,
+                        x: ball.position.x,
+                        y: ball.position.y,
+                        z: ball.position.z,
+                        vx: velocity.x,
+                        vy: velocity.y,
+                        vz: velocity.z
+                    }));
+                }
+            } else {
+                console.error('No se encontró la pelota para reiniciar');
+            }
+        }
+
+        function resetGame() {
+            console.log('Botón "Reiniciar partida" presionado');
+            if (ball) {
+                ball.position.set(0, 0, 0);
+                velocity.set(0, 0, 0);
+                console.log('Pelota reiniciada a posición:', ball.position, 'Velocidad:', velocity);
+            } else {
+                console.error('No se encontró la pelota para reiniciar');
+            }
+
+            team1Score = 0;
+            team2Score = 0;
+            console.log('Puntajes reiniciados: Equipo 1:', team1Score, 'Equipo 2:', team2Score);
+            updateScoreboard();
+
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                socket.send(JSON.stringify({
+                    type: 'ballPosition',
+                    playerId: playerId,
+                    x: ball.position.x,
+                    y: ball.position.y,
+                    z: ball.position.z,
+                    vx: velocity.x,
+                    vy: velocity.y,
+                    vz: velocity.z
+                }));
+            }
+        }
+
+        // Añadir event listeners a los botones
+        document.getElementById('resetBallButton')?.addEventListener('click', () => {
+            console.log('Evento click en resetBallButton detectado');
+            resetBall();
+        });
+
+        document.getElementById('resetGameButton')?.addEventListener('click', () => {
+            console.log('Evento click en resetGameButton detectado');
+            resetGame();
+        });
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+    <canvas width="908" height="710" style="display: block; width: 908px; height: 710px; touch-action: none;"></canvas>
+
+
+</body></html>
