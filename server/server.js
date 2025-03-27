@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({ port: 8080 });
+const port = process.env.PORT || 8080; // Usar el puerto asignado por Render o 8080 por defecto
+const wss = new WebSocket.Server({ port: port });
 const rooms = new Map();
 
 wss.on('connection', (ws, req) => {
@@ -39,4 +40,4 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-console.log('Servidor WebSocket corriendo en ws://localhost:8080');
+console.log(`Servidor WebSocket corriendo en el puerto ${port}`);
