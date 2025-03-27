@@ -52,12 +52,12 @@ export default {
 
             // Servir archivos desde GitHub
             if (url.pathname === '/' || url.pathname === '/multiplayer.html') {
-                const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/main/multiplayer.html';
+                const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/multiplayer-game/main/multiplayer.html';
                 const response = await fetch(githubUrl);
                 if (!response.ok) return new Response('HTML no encontrado en GitHub', { status: 404 });
                 return new Response(response.body, { headers: { 'Content-Type': 'text/html' } });
             } else if (url.pathname === '/pelotita2.glb') {
-                const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/main/pelotita2.glb';
+                const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/multiplayer-game/main/pelotita2.glb';
                 const response = await fetch(githubUrl);
                 if (!response.ok) return new Response('GLB no encontrado en GitHub', { status: 404 });
                 return new Response(response.body, { headers: { 'Content-Type': 'application/octet-stream' } });
