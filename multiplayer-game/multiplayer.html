@@ -177,6 +177,45 @@
 
             clock = new THREE.Clock();
 
+            // Configurar arcos (mover aquí para que se creen antes de animate)
+            const goalWidth = 1.3;
+            const goalHeight = 0.7;
+            const goalDepth = 0.2;
+            const postRadius = 0.05;
+            const postMaterial = new THREE.MeshBasicMaterial({ color: 0xE4E4E4 });
+
+            const leftPost = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
+            leftPost.position.set(-goalWidth / 2, goalHeight - 1 / 2, -2.35);
+            leftPost.name = 'leftPost';
+            scene.add(leftPost);
+
+            const rightPost = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
+            rightPost.position.set(goalWidth / 2, goalHeight - 1 / 2, -2.35);
+            rightPost.name = 'rightPost';
+            scene.add(rightPost);
+
+            const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32), postMaterial);
+            crossbar.position.set(0, goalHeight - 0.18, -2.35);
+            crossbar.rotation.z = Math.PI / 2;
+            crossbar.name = 'crossbar';
+            scene.add(crossbar);
+
+            const leftPost2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
+            leftPost2.position.set(-goalWidth / 2, goalHeight - 1 / 2, 2.35);
+            leftPost2.name = 'leftPost2';
+            scene.add(leftPost2);
+
+            const rightPost2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
+            rightPost2.position.set(goalWidth / 2, goalHeight - 1 / 2, 2.35);
+            rightPost2.name = 'rightPost2';
+            scene.add(rightPost2);
+
+            const crossbar2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32), postMaterial);
+            crossbar2.position.set(0, goalHeight - 0.18, 2.35);
+            crossbar2.rotation.z = Math.PI / 2;
+            crossbar2.name = 'crossbar2';
+            scene.add(crossbar2);
+
             const loader = new THREE.GLTFLoader();
             loader.load('/pelotita2.glb', (gltf) => {
                 const model = gltf.scene;
@@ -305,45 +344,6 @@
             }, undefined, (error) => {
                 console.error('Error al cargar el modelo:', error);
             });
-
-            // Configurar arcos
-            const goalWidth = 1.3;
-            const goalHeight = 0.7;
-            const goalDepth = 0.2;
-            const postRadius = 0.05;
-            const postMaterial = new THREE.MeshBasicMaterial({ color: 0xE4E4E4 });
-
-            const leftPost = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
-            leftPost.position.set(-goalWidth / 2, goalHeight - 1 / 2, -2.35);
-            leftPost.name = 'leftPost';
-            scene.add(leftPost);
-
-            const rightPost = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
-            rightPost.position.set(goalWidth / 2, goalHeight - 1 / 2, -2.35);
-            rightPost.name = 'rightPost';
-            scene.add(rightPost);
-
-            const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32), postMaterial);
-            crossbar.position.set(0, goalHeight - 0.18, -2.35);
-            crossbar.rotation.z = Math.PI / 2;
-            crossbar.name = 'crossbar';
-            scene.add(crossbar);
-
-            const leftPost2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
-            leftPost2.position.set(-goalWidth / 2, goalHeight - 1 / 2, 2.35);
-            leftPost2.name = 'leftPost2';
-            scene.add(leftPost2);
-
-            const rightPost2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
-            rightPost2.position.set(goalWidth / 2, goalHeight - 1 / 2, 2.35);
-            rightPost2.name = 'rightPost2';
-            scene.add(rightPost2);
-
-            const crossbar2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32), postMaterial);
-            crossbar2.position.set(0, goalHeight - 0.18, 2.35);
-            crossbar2.rotation.z = Math.PI / 2;
-            crossbar2.name = 'crossbar2';
-            scene.add(crossbar2);
 
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
