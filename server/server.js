@@ -1,30 +1,41 @@
 const WebSocket = require('ws');
+
 const wss = new WebSocket.Server({ port: 8080 });
+const rooms = new Map();
 
-let players = [];
+wss.on('connection', (ws, req) => {
+    const urlParams = new URLSearchParams(req.url.split('?')[1]);
+    const id = urlParams.get('id');
+    const [roomId, playerId] = id.split(':');
 
-wss.on('connection', (ws) => {
-    console.log('Nuevo jugador conectado');
-    players.push(ws);
+    console.log(`Nuevo jugador conectado: ${playerId} en la sala ${roomId}`);
 
-    // Enviar a cada jugador su ID (0 o 1)
-    ws.send(JSON.stringify({ type: 'playerId', id: players.length - 1 }));
+    if (!rooms.has(roomId)) {
+        rooms.set(roomId, new Set());
+    }
+    const room = rooms.get(roomId);
+    room.add(ws);
 
-    // Cuando un jugador envía un mensaje
+    const playerNumber = room.size === 1 ? 1 : 2;
+    ws.send(JSON.stringify({ type: 'playerId', id: playerId, playerNumber: playerNumber }));
+
     ws.on('message', (message) => {
         const data = JSON.parse(message);
-        // Reenviar el mensaje a todos los jugadores conectados
-        players.forEach((player) => {
-            if (player.readyState === WebSocket.OPEN) {
-                player.send(JSON.stringify(data));
+        console.log(`Mensaje recibido en la sala ${roomId}:`, data);
+
+        room.forEach((client) => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(data));
             }
         });
     });
 
-    // Cuando un jugador se desconecta
     ws.on('close', () => {
-        console.log('Jugador desconectado');
-        players = players.filter((player) => player !== ws);
+        console.log(`Jugador ${playerId} desconectado de la sala ${roomId}`);
+        room.delete(ws);
+        if (room.size === 0) {
+            rooms.delete(roomId);
+        }
     });
 });
 
