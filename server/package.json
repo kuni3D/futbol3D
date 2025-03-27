@@ -1,7 +1,7 @@
 {
-    "name": "GooseFootball25-server",
+    "name": "futbol3d-server",
     "version": "1.0.0",
-    "description": "Servidor WebSocket para el juego GooseFootball25",
+    "description": "Servidor WebSocket para el juego Futbol3D",
     "main": "server.js",
     "scripts": {
         "start": "node server.js"
