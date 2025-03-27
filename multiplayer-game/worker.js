@@ -19,18 +19,14 @@ export default {
 
                 const wsPair = new WebSocketPair();
                 const [client, server] = Object.values(wsPair);
-
                 server.accept();
                 const playerNumber = players.length + 1;
                 players.push({ id: playerId, ws: server, number: playerNumber });
 
                 server.send(JSON.stringify({ type: 'playerId', id: playerId, playerNumber }));
-                console.log(`Jugador ${playerId} conectado como jugador ${playerNumber}`);
-
                 server.addEventListener('message', (event) => {
                     try {
                         const data = JSON.parse(event.data);
-                        console.log(`Mensaje recibido de ${playerId}:`, data);
                         players.forEach(p => {
                             if (p.id !== playerId && p.ws.readyState === WebSocket.OPEN) {
                                 p.ws.send(JSON.stringify(data));
@@ -54,16 +50,22 @@ export default {
                 return new Response(null, { status: 101, webSocket: client });
             }
 
-            // Servir archivos estáticos desde ASSETS
+            // Servir archivos desde GitHub
             if (url.pathname === '/' || url.pathname === '/multiplayer.html') {
-                return await env.ASSETS.fetch(new Request(new URL('/multiplayer.html', url)));
+                const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/main/multiplayer.html';
+                const response = await fetch(githubUrl);
+                if (!response.ok) return new Response('HTML no encontrado en GitHub', { status: 404 });
+                return new Response(response.body, { headers: { 'Content-Type': 'text/html' } });
             } else if (url.pathname === '/pelotita2.glb') {
-                return await env.ASSETS.fetch(new Request(new URL('/pelotita2.glb', url)));
+                const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/main/pelotita2.glb';
+                const response = await fetch(githubUrl);
+                if (!response.ok) return new Response('GLB no encontrado en GitHub', { status: 404 });
+                return new Response(response.body, { headers: { 'Content-Type': 'application/octet-stream' } });
             }
 
             return new Response('Not found', { status: 404 });
         } catch (error) {
-            console.error('Error global en el Worker:', error);
+            console.error('Error en el Worker:', error);
             return new Response('Error interno del servidor', { status: 500 });
         }
     }
