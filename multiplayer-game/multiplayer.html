@@ -1,4 +1,8 @@
 <html><head>
+  <meta http-equiv="Content-Security-Policy" content="
+      script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com;
+      connect-src 'self' wss://multiplayer-game-v2.kuni3d.workers.dev;
+  ">
     <title>Pro Evolution Goose 25</title>
     <style>
         body { margin: 0; font-family: Arial, sans-serif; overflow: hidden; }
@@ -51,59 +55,88 @@
     <script>
     const playerId = Date.now().toString(); // ID único para el jugador
     const roomId = "default"; // Puedes usar diferentes salas si quieres
-const socket = new WebSocket('ws://127.0.0.1:8787/websocket?id=default:' + Date.now());
+    let socket;
 
-    socket.onopen = () => console.log('Conectado al servidor WebSocket');
-    socket.onerror = (error) => console.error('Error en WebSocket:', error);
-    socket.onclose = () => console.log('Conexión WebSocket cerrada');
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'playerId') {
-            console.log('Soy el jugador', data.id);
-            if (data.playerNumber === 1) myCharacter = 'ganzito';
-            else if (data.playerNumber === 2) myCharacter = 'ganzit2';
-        } else if (data.type === 'characterPosition') {
-            if (data.playerId !== playerId) {
-                const otherCharacter = data.character === 'ganzito' ? armature : armatur2;
-                const otherActions = data.character === 'ganzito' ? actions : actions2;
-                if (otherCharacter) {
-                    otherCharacter.position.set(data.x, data.y, data.z);
-                    otherCharacter.rotation.y = data.rotationY;
-                    if (otherActions[data.action]) {
-                        if (otherActions.currentAction !== data.action) {
-                            if (otherActions[otherActions.currentAction]) {
-                                otherActions[otherActions.currentAction].fadeOut(0.25);
+    function connectWebSocket() {
+        socket = new WebSocket('wss://multiplayer-game-v2.kuni3d.workers.dev/websocket?id=default:' + Date.now());
+
+        socket.onopen = () => {
+            console.log('Conectado al servidor WebSocket');
+        };
+
+        socket.onerror = (error) => {
+            console.error('Error en WebSocket:', error);
+        };
+
+        socket.onclose = () => {
+            console.log('Conexión WebSocket cerrada, intentando reconectar...');
+            setTimeout(connectWebSocket, 3000);
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'playerId') {
+                console.log('Soy el jugador', data.id);
+                if (data.playerNumber === 1) {
+                    myCharacter = 'ganzito';
+                    myArmature = armature;
+                    myCurrentAction = 'idlecomun';
+                    myActions = actions;
+                    kickAnimation = 'patear';
+                    idleAnimation = 'idlecomun';
+                } else if (data.playerNumber === 2) {
+                    myCharacter = 'ganzit2';
+                    myArmature = armatur2;
+                    myCurrentAction = '2quieto';
+                    myActions = actions2;
+                    kickAnimation = '2patea';
+                    idleAnimation = '2quieto';
+                }
+            } else if (data.type === 'characterPosition') {
+                if (data.playerId !== playerId) {
+                    const otherCharacter = data.character === 'ganzito' ? armature : armatur2;
+                    const otherActions = data.character === 'ganzito' ? actions : actions2;
+                    if (otherCharacter) {
+                        otherCharacter.position.set(data.x, data.y, data.z);
+                        otherCharacter.rotation.y = data.rotationY;
+                        if (otherActions[data.action]) {
+                            if (otherActions.currentAction !== data.action) {
+                                if (otherActions[otherActions.currentAction]) {
+                                    otherActions[otherActions.currentAction].fadeOut(0.25);
+                                }
+                                otherActions[data.action].reset().fadeIn(0.25).play();
+                                otherActions.currentAction = data.action;
                             }
-                            otherActions[data.action].reset().fadeIn(0.25).play();
-                            otherActions.currentAction = data.action;
                         }
                     }
                 }
-            }
-        } else if (data.type === 'ballPosition') {
-            if (ball && data.playerId !== playerId) {
-                ball.position.set(data.x, data.y, data.z);
-                velocity.set(data.vx, data.vy, data.vz);
-            }
-        } else if (data.type === 'score') {
-            team1Score = data.team1Score;
-            team2Score = data.team2Score;
-            updateScoreboard();
-        } else if (data.type === 'resetBall') {
-            if (ball) {
-                ball.position.set(0, 0, 0);
-                velocity.set(0, 0, 0);
-            }
-        } else if (data.type === 'resetGame') {
-            if (ball) {
-                ball.position.set(0, 0, 0);
-                velocity.set(0, 0, 0);
-                team1Score = 0;
-                team2Score = 0;
+            } else if (data.type === 'ballPosition') {
+                if (ball && data.playerId !== playerId) {
+                    ball.position.set(data.x, data.y, data.z);
+                    velocity.set(data.vx, data.vy, data.vz);
+                }
+            } else if (data.type === 'score') {
+                team1Score = data.team1Score;
+                team2Score = data.team2Score;
                 updateScoreboard();
+            } else if (data.type === 'resetBall') {
+                if (ball) {
+                    ball.position.set(0, 0, 0);
+                    velocity.set(0, 0, 0);
+                }
+            } else if (data.type === 'resetGame') {
+                if (ball) {
+                    ball.position.set(0, 0, 0);
+                    velocity.set(0, 0, 0);
+                    team1Score = 0;
+                    team2Score = 0;
+                    updateScoreboard();
+                }
             }
-        }
-    };
+        };
+    }
+
+    connectWebSocket();
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
