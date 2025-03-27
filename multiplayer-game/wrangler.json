@@ -1,7 +1,7 @@
  {
      "$schema": "node_modules/wrangler/config-schema.json",
      "name": "multiplayer-game",
-     "main": "src/index.js", // Cambia a "index.js" si no usas una carpeta src/
+     "main": "index.js", // Cambia a "index.js" si no usas una carpeta src/
      "compatibility_date": "2025-03-21",
      "migrations": [
          {

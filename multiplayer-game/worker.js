@@ -5,7 +5,6 @@ export default {
         try {
             const url = new URL(request.url);
 
-            // Manejar WebSocket
             if (url.pathname === '/websocket') {
                 const id = url.searchParams.get('id');
                 if (!id) return new Response('ID no proporcionado', { status: 400 });
@@ -39,18 +38,11 @@ export default {
 
                 server.addEventListener('close', () => {
                     players = players.filter(p => p.id !== playerId);
-                    console.log(`Jugador ${playerId} desconectado`);
-                });
-
-                server.addEventListener('error', (error) => {
-                    console.error('Error en WebSocket:', error);
-                    players = players.filter(p => p.id !== playerId);
                 });
 
                 return new Response(null, { status: 101, webSocket: client });
             }
 
-            // Servir archivos desde GitHub
             if (url.pathname === '/' || url.pathname === '/multiplayer.html') {
                 const githubUrl = 'https://raw.githubusercontent.com/kuni3D/futbol3D/main/multiplayer-game/multiplayer.html';
                 const response = await fetch(githubUrl);

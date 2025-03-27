@@ -1,7 +1,4 @@
-name = "multiplayer-game-v2"
-main = "worker.js"
-compatibility_date = "2025-03-26"
-account_id = "1f9c1c5f7652f87a70ef146cefee9308"
-
-[assets]
-directory = "../"
+name = "multiplayer-game-v2"  # Debe coincidir con el Worker en Cloudflare
+main = "index.js"             # O "worker.js", según el nombre de tu archivo
+compatibility_date = "2023-01-01"
+account_id = "1f9c1c5f7652f87a70ef146cefee9308"  # Tu account ID del error
