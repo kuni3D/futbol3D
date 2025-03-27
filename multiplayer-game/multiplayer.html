@@ -252,7 +252,7 @@
                 const armature = model.getObjectByName('armature');
                 if (playerModel && armature) {
                     console.log('Ganzito y armature encontrados');
-                    playerModel = armature; // Usamos el armature como el modelo principal
+                    playerModel = armature;
                     playerMixer = new THREE.AnimationMixer(playerModel);
                     playerModel.animations = {};
                     const animationNames = ['idlecomun', 'correr', 'patear'];
@@ -315,28 +315,34 @@
 
             const leftPost = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
             leftPost.position.set(-goalWidth / 2, goalHeight - 1 / 2, -2.35);
+            leftPost.name = 'leftPost';
             scene.add(leftPost);
 
             const rightPost = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
             rightPost.position.set(goalWidth / 2, goalHeight - 1 / 2, -2.35);
+            rightPost.name = 'rightPost';
             scene.add(rightPost);
 
             const crossbar = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32), postMaterial);
             crossbar.position.set(0, goalHeight - 0.18, -2.35);
             crossbar.rotation.z = Math.PI / 2;
+            crossbar.name = 'crossbar';
             scene.add(crossbar);
 
             const leftPost2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
             leftPost2.position.set(-goalWidth / 2, goalHeight - 1 / 2, 2.35);
+            leftPost2.name = 'leftPost2';
             scene.add(leftPost2);
 
             const rightPost2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalHeight, 32), postMaterial);
             rightPost2.position.set(goalWidth / 2, goalHeight - 1 / 2, 2.35);
+            rightPost2.name = 'rightPost2';
             scene.add(rightPost2);
 
             const crossbar2 = new THREE.Mesh(new THREE.CylinderGeometry(postRadius, postRadius, goalWidth, 32), postMaterial);
             crossbar2.position.set(0, goalHeight - 0.18, 2.35);
             crossbar2.rotation.z = Math.PI / 2;
+            crossbar2.name = 'crossbar2';
             scene.add(crossbar2);
 
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -515,16 +521,27 @@
         function checkCollisions() {
             if (!ball) return;
             ballBox.setFromObject(ball);
-            leftPostBox.setFromObject(scene.getObjectByName('leftPost'));
-            rightPostBox.setFromObject(scene.getObjectByName('rightPost'));
-            crossbarBox.setFromObject(scene.getObjectByName('crossbar'));
-            leftPost2Box.setFromObject(scene.getObjectByName('leftPost2'));
-            rightPost2Box.setFromObject(scene.getObjectByName('rightPost2'));
-            crossbar2Box.setFromObject(scene.getObjectByName('crossbar2'));
 
-            if (ballBox.intersectsBox(leftPostBox) || ballBox.intersectsBox(rightPostBox) ||
-                ballBox.intersectsBox(crossbarBox) || ballBox.intersectsBox(leftPost2Box) ||
-                ballBox.intersectsBox(rightPost2Box) || ballBox.intersectsBox(crossbar2Box)) {
+            const leftPostObj = scene.getObjectByName('leftPost');
+            const rightPostObj = scene.getObjectByName('rightPost');
+            const crossbarObj = scene.getObjectByName('crossbar');
+            const leftPost2Obj = scene.getObjectByName('leftPost2');
+            const rightPost2Obj = scene.getObjectByName('rightPost2');
+            const crossbar2Obj = scene.getObjectByName('crossbar2');
+
+            if (leftPostObj) leftPostBox.setFromObject(leftPostObj);
+            if (rightPostObj) rightPostBox.setFromObject(rightPostObj);
+            if (crossbarObj) crossbarBox.setFromObject(crossbarObj);
+            if (leftPost2Obj) leftPost2Box.setFromObject(leftPost2Obj);
+            if (rightPost2Obj) rightPost2Box.setFromObject(rightPost2Obj);
+            if (crossbar2Obj) crossbar2Box.setFromObject(crossbar2Obj);
+
+            if ((leftPostObj && ballBox.intersectsBox(leftPostBox)) ||
+                (rightPostObj && ballBox.intersectsBox(rightPostBox)) ||
+                (crossbarObj && ballBox.intersectsBox(crossbarBox)) ||
+                (leftPost2Obj && ballBox.intersectsBox(leftPost2Box)) ||
+                (rightPost2Obj && ballBox.intersectsBox(rightPost2Box)) ||
+                (crossbar2Obj && ballBox.intersectsBox(crossbar2Box))) {
                 velocity.x = -velocity.x;
                 velocity.z = -velocity.z;
             }
