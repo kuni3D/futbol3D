@@ -56,7 +56,7 @@
     <script>
         let playerId = Date.now().toString();
         let playerNumber = null; // Inicialmente null, se asignará por el servidor
-        const roomId = "default";
+        const roomId = "game1"; // Cambiamos a "game1" para probar
         let socket;
 
         let scene, camera, renderer, composer, clock;
@@ -72,6 +72,7 @@
         const keys = { w: false, a: false, s: false, d: false, space: false };
 
         function connectWebSocket() {
+            console.log(`Intentando conectar al WebSocket con roomId: ${roomId}, playerId: ${playerId}`);
             socket = new WebSocket(`wss://multiplayer-game-v2.kuni3d.workers.dev/websocket?id=${roomId}:${playerId}`);
 
             socket.onopen = () => {
@@ -668,15 +669,11 @@
                 runAnimation = '2corre';
                 idleAnimation = '2quieto';
                 kickAnimation = '2patea';
-            } else {
-                console.warn('playerNumber no asignado, esperando al servidor...');
-                composer.render();
-                return; // No continuar hasta que playerNumber esté asignado
             }
 
-            console.log('Controlando al jugador:', playerNumber, 'Modelo:', myModel ? myModel.name : 'No asignado');
-
             if (myModel) {
+                console.log('Controlando al jugador:', playerNumber, 'Modelo:', myModel ? myModel.name : 'No asignado');
+
                 const direction = new THREE.Vector3();
                 if (keys.w) direction.z -= 1;
                 if (keys.s) direction.z += 1;
@@ -755,6 +752,8 @@
                     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
                     console.log('Enviada posición:', message);
                 }
+            } else {
+                console.warn('Esperando asignación de playerNumber...');
             }
 
             if (ball) {
