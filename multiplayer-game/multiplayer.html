@@ -58,6 +58,7 @@
         let playerNumber;
         const roomId = "default";
         let socket;
+        let isModelLoaded = false; // Para esperar a que el modelo esté cargado
 
         let scene, camera, renderer, composer, clock;
         let playerModel, opponentModel, playerMixer, opponentMixer;
@@ -76,6 +77,8 @@
 
             socket.onopen = () => {
                 console.log('Conectado al servidor WebSocket');
+                // Enviar un mensaje para unirse a la sala
+                socket.send(JSON.stringify({ type: 'joinRoom', roomId: roomId, playerId: playerId }));
             };
 
             socket.onerror = (error) => {
@@ -90,12 +93,18 @@
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log('Mensaje recibido:', data);
+
                 if (data.type === 'playerId') {
                     playerId = data.id;
                     playerNumber = data.playerNumber;
                     console.log('Soy el jugador', playerId, 'Número:', playerNumber);
                 } else if (data.type === 'characterPosition') {
                     if (data.playerId !== playerId) {
+                        console.log('Recibida posición del otro jugador:', data);
+                        if (!isModelLoaded) {
+                            console.warn('Modelo aún no cargado, ignorando mensaje de posición');
+                            return;
+                        }
                         const otherModel = playerNumber === 1 ? opponentModel : playerModel;
                         if (otherModel) {
                             otherModel.position.set(data.x, data.y, data.z);
@@ -108,14 +117,20 @@
                                     }
                                     otherModel.animations[data.action].reset().fadeIn(0.25).play();
                                     otherModel.currentAction = data.action;
+                                    console.log(`Animación ${data.action} aplicada al otro jugador`);
                                 }
+                            } else {
+                                console.warn('No se pudo aplicar la animación:', data.action);
                             }
+                        } else {
+                            console.warn('Modelo del otro jugador no está listo');
                         }
                     }
                 } else if (data.type === 'ballPosition') {
                     if (ball && data.playerId !== playerId) {
                         ball.position.set(data.x, data.y, data.z);
                         velocity.set(data.vx, data.vy, data.vz);
+                        console.log('Pelota sincronizada:', ball.position);
                     }
                 } else if (data.type === 'score') {
                     team1Score = data.team1Score;
@@ -177,7 +192,7 @@
 
             clock = new THREE.Clock();
 
-            // Configurar arcos (mover aquí para que se creen antes de animate)
+            // Configurar arcos
             const goalWidth = 1.3;
             const goalHeight = 0.7;
             const goalDepth = 0.2;
@@ -341,6 +356,9 @@
 
                 camera.position.set(0, 5, 10);
                 camera.lookAt(0, 0, 0);
+
+                isModelLoaded = true; // Marcar que el modelo está cargado
+                console.log('Modelo completamente cargado, listo para sincronizar');
             }, undefined, (error) => {
                 console.error('Error al cargar el modelo:', error);
             });
@@ -698,6 +716,7 @@
                         action: myModel.currentAction
                     };
                     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+                    console.log('Enviada posición con patada:', message);
 
                     myModel.animations[kickAnimation].getMixer().addEventListener('finished', (e) => {
                         if (e.action === myModel.animations[kickAnimation] && myModel.animations[idleAnimation]) {
@@ -715,6 +734,7 @@
                                 action: myModel.currentAction
                             };
                             if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+                            console.log('Enviada posición después de patada:', message);
                         }
                     }, { once: true });
                 } else {
@@ -729,6 +749,7 @@
                         action: myModel.currentAction
                     };
                     if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+                    console.log('Enviada posición:', message);
                 }
             }
 
