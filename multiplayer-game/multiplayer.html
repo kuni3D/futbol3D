@@ -2,7 +2,7 @@
 <head>
     <meta http-equiv="Content-Security-Policy" content="
         script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com;
-        connect-src 'self' wss://multiplayer-game-v2.kuni3d.workers.dev;
+        connect-src 'self' ws://localhost:8080;
     ">
     <title>Pro Evolution Goose 25</title>
     <style>
@@ -31,6 +31,12 @@
         button:hover {
             background: #e0e0e0;
         }
+        #connectionStatus {
+            position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
+            color: #ff0000; font-size: 18px; text-align: center;
+            background: rgba(0, 0, 0, 0.5); padding: 5px 15px; border-radius: 5px;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
@@ -43,6 +49,7 @@
         <button id="resetBallButton">Reiniciar Pelota</button>
         <button id="resetGameButton">Reiniciar Partida</button>
     </div>
+    <div id="connectionStatus">Conectando al servidor...</div>
 
     <script src="https://unpkg.com/three@0.134.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -55,9 +62,11 @@
 
     <script>
         let playerId = Date.now().toString();
-        let playerNumber = null; // Inicialmente null, se asignará por el servidor
-        const roomId = "game1"; // Cambiamos a "game1" para probar
+        let playerNumber = null;
+        const roomId = "game1";
         let socket;
+        let isConnected = false;
+        const connectionStatus = document.getElementById('connectionStatus');
 
         let scene, camera, renderer, composer, clock;
         let playerModel, opponentModel, playerMixer, opponentMixer;
@@ -73,18 +82,27 @@
 
         function connectWebSocket() {
             console.log(`Intentando conectar al WebSocket con roomId: ${roomId}, playerId: ${playerId}`);
-            socket = new WebSocket(`wss://multiplayer-game-v2.kuni3d.workers.dev/websocket?id=${roomId}:${playerId}`);
+            socket = new WebSocket(`ws://localhost:8080/websocket?id=${roomId}:${playerId}`);
 
             socket.onopen = () => {
                 console.log('Conectado al servidor WebSocket');
+                isConnected = true;
+                connectionStatus.textContent = 'Conectado al servidor';
+                connectionStatus.style.color = '#00ff00';
             };
 
             socket.onerror = (error) => {
                 console.error('Error en WebSocket:', error);
+                isConnected = false;
+                connectionStatus.textContent = 'Error al conectar al servidor';
+                connectionStatus.style.color = '#ff0000';
             };
 
             socket.onclose = () => {
                 console.log('Conexión WebSocket cerrada, intentando reconectar...');
+                isConnected = false;
+                connectionStatus.textContent = 'Conexión perdida, reconectando...';
+                connectionStatus.style.color = '#ff0000';
                 setTimeout(connectWebSocket, 3000);
             };
 
@@ -186,7 +204,6 @@
 
             clock = new THREE.Clock();
 
-            // Configurar arcos
             const goalWidth = 1.3;
             const goalHeight = 0.7;
             const goalDepth = 0.2;
@@ -295,7 +312,6 @@
                 if (!ball) console.error('No se encontró la pelota en el modelo');
                 else console.log('Pelota asignada:', ball);
 
-                // Configurar ganzito (jugador 1)
                 playerModel = model.getObjectByName('ganzito');
                 const armature = model.getObjectByName('armature');
                 if (playerModel && armature) {
@@ -321,7 +337,6 @@
                     console.error('Falta ganzito o armature en el modelo');
                 }
 
-                // Configurar ganzit2 (jugador 2)
                 opponentModel = model.getObjectByName('ganzit2');
                 const armatur2 = model.getObjectByName('armatur2');
                 if (opponentModel && armatur2) {
@@ -369,7 +384,6 @@
             scoreboard.textContent = `Equipo 1: ${team1Score} - Equipo 2: ${team2Score}`;
         }
 
-        // Control de teclas
         window.addEventListener('keydown', (event) => {
             const key = event.key.toLowerCase();
             const code = event.code;
@@ -397,7 +411,6 @@
             console.log(`Tecla ${key} (código: ${code}) soltada, keys:`, keys);
         });
 
-        // Colisiones y lógica del juego
         const ballBox = new THREE.Box3();
         const playerBox = new THREE.Box3();
         const opponentBox = new THREE.Box3();
@@ -510,7 +523,7 @@
                 team2Score++;
                 ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
-                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                if (isConnected) socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
                 createFireworks(0, 2, -2.3);
                 updateScoreboard();
                 return true;
@@ -519,7 +532,7 @@
                 team1Score++;
                 ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
-                socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
+                if (isConnected) socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
                 createFireworks(0, 2, 2.3);
                 updateScoreboard();
                 return true;
@@ -560,7 +573,6 @@
             if (!ball) return false;
             let collided = false;
 
-            // Colisión con el jugador controlado (basado en playerNumber)
             if (playerNumber === 1 && playerModel) {
                 ballBox.setFromObject(ball);
                 ballBox.expandByScalar(0.08);
@@ -655,7 +667,6 @@
             if (playerMixer) playerMixer.update(delta);
             if (opponentMixer) opponentMixer.update(delta);
 
-            // Determinar el modelo controlado basado en playerNumber
             let myModel, myMixer, runAnimation, idleAnimation, kickAnimation;
             if (playerNumber === 1) {
                 myModel = playerModel;
@@ -716,9 +727,10 @@
                         rotationY: myModel.rotation.y,
                         action: myModel.currentAction
                     };
-                    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
-                    console.log('Enviada posición con patada:', message);
-
+                    if (isConnected) {
+                        socket.send(JSON.stringify(message));
+                        console.log('Enviada posición con patada:', message);
+                    }
                     myModel.animations[kickAnimation].getMixer().addEventListener('finished', (e) => {
                         if (e.action === myModel.animations[kickAnimation] && myModel.animations[idleAnimation]) {
                             myModel.animations[kickAnimation].stop();
@@ -734,8 +746,10 @@
                                 rotationY: myModel.rotation.y,
                                 action: myModel.currentAction
                             };
-                            if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
-                            console.log('Enviada posición después de patada:', message);
+                            if (isConnected) {
+                                socket.send(JSON.stringify(message));
+                                console.log('Enviada posición después de patada:', message);
+                            }
                         }
                     }, { once: true });
                 } else {
@@ -749,8 +763,10 @@
                         rotationY: myModel.rotation.y,
                         action: myModel.currentAction
                     };
-                    if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
-                    console.log('Enviada posición:', message);
+                    if (isConnected) {
+                        socket.send(JSON.stringify(message));
+                        console.log('Enviada posición:', message);
+                    }
                 }
             } else {
                 console.warn('Esperando asignación de playerNumber...');
@@ -767,8 +783,8 @@
                 if (Math.abs(ball.position.z) > roomSizeZ) velocity.z = -velocity.z;
                 velocity.multiplyScalar(0.99);
 
-                if (socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
+                if (isConnected) {
+                    const ballMessage = {
                         type: 'ballPosition',
                         playerId: playerId,
                         x: ball.position.x,
@@ -777,7 +793,9 @@
                         vx: velocity.x,
                         vy: velocity.y,
                         vz: velocity.z
-                    }));
+                    };
+                    socket.send(JSON.stringify(ballMessage));
+                    console.log('Enviada posición de la pelota:', ballMessage);
                 }
             }
 
@@ -797,7 +815,7 @@
                 ball.position.set(0, 0, 0);
                 velocity.set(0, 0, 0);
                 console.log('Pelota reiniciada a posición:', ball.position, 'Velocidad:', velocity);
-                if (socket.readyState === WebSocket.OPEN) {
+                if (isConnected) {
                     socket.send(JSON.stringify({
                         type: 'ballPosition',
                         playerId: playerId,
@@ -829,7 +847,7 @@
             console.log('Puntajes reiniciados: Equipo 1:', team1Score, 'Equipo 2:', team2Score);
             updateScoreboard();
 
-            if (socket.readyState === WebSocket.OPEN) {
+            if (isConnected) {
                 socket.send(JSON.stringify({ type: 'score', team1Score, team2Score }));
                 socket.send(JSON.stringify({
                     type: 'ballPosition',
