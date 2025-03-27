@@ -1,15 +1,12 @@
 {
-  "name": "server",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "ws": "^8.18.1"
-  }
+    "name": "GooseFootball25-server",
+    "version": "1.0.0",
+    "description": "Servidor WebSocket para el juego GooseFootball25",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "ws": "^8.14.2"
+    }
 }
