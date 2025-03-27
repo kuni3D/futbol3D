@@ -657,7 +657,11 @@ console.log('mixer2 inicializado:', mixer2); // Nuevo log
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
-            controls.update();
+            if (playerMixer) playerMixer.update(delta);
+            if (opponentMixer) opponentMixer.update(delta);
+            renderer.render(scene, camera);
+        }
+        animate();
 
             if (mixer) mixer.update(delta);
             if (mixer2) {
