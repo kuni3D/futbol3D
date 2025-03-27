@@ -1,23 +1,9 @@
- {
-     "$schema": "node_modules/wrangler/config-schema.json",
-     "name": "multiplayer-game",
-     "main": "index.js", // Cambia a "index.js" si no usas una carpeta src/
-     "compatibility_date": "2025-03-21",
-     "migrations": [
-         {
-             "new_classes": ["GameRoom"], // Cambié "new_sqlite_classes" a "new_classes" y "MyDurableObject" a "GameRoom"
-             "tag": "v1"
-         }
-     ],
-     "durable_objects": {
-         "bindings": [
-             {
-                 "class_name": "GameRoom", // Cambié "MyDurableObject" a "GameRoom"
-                 "name": "GAME_ROOM"       // Mantengo el nombre del binding como "GAME_ROOM"
-             }
-         ]
-     },
-     "observability": {
-         "enabled": true
-     }
- }
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "multiplayer-game-v2",  // Cambia a multiplayer-game-v2
+    "main": "worker.js",            // Correcto, apunta a tu archivo
+    "compatibility_date": "2025-03-21",
+    "observability": {
+        "enabled": true
+    }
+}
